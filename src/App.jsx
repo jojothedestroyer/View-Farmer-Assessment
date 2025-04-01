@@ -1872,7 +1872,7 @@ const App = () => {
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Farmer Assessment1 Data</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Farmer Assessment Data</h1>
           {/* <button
             onClick={refreshData}
             className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
