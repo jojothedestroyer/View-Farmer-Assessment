@@ -902,183 +902,1041 @@
 
 // // export default App
 
-"use client"
+// "use client"
 
-import { useState, useEffect } from "react"
-import { database, ref, onValue } from "./firebase"
-// import { jsPDF } from "jspdf"
-// import autoTable from "jspdf-autotable"
-// import Chart from "chart.js/auto"
-import { openDB } from "idb"
+// import { useState, useEffect } from "react"
+// import { database, ref, onValue } from "./firebase"
+// // import { jsPDF } from "jspdf"
+// // import autoTable from "jspdf-autotable"
+// // import Chart from "chart.js/auto"
+// import { openDB } from "idb"
 
-// Initialize IndexedDB
-const initDB = async () => {
-  return openDB("farmersDB", 1, {
-    upgrade(db) {
-      // Create stores for different data types
-      if (!db.objectStoreNames.contains("users")) {
-        db.createObjectStore("users")
-      }
-      if (!db.objectStoreNames.contains("farmers")) {
-        const farmerStore = db.createObjectStore("farmers", { keyPath: "id" })
-        // Create an index for userId to query farmers by user
-        farmerStore.createIndex("userId", "userId", { unique: false })
-      }
-      if (!db.objectStoreNames.contains("metadata")) {
-        db.createObjectStore("metadata")
-      }
-    },
-  })
-}
+// // Initialize IndexedDB
+// const initDB = async () => {
+//   return openDB("farmersDB", 1, {
+//     upgrade(db) {
+//       // Create stores for different data types
+//       if (!db.objectStoreNames.contains("users")) {
+//         db.createObjectStore("users")
+//       }
+//       if (!db.objectStoreNames.contains("farmers")) {
+//         const farmerStore = db.createObjectStore("farmers", { keyPath: "id" })
+//         // Create an index for userId to query farmers by user
+//         farmerStore.createIndex("userId", "userId", { unique: false })
+//       }
+//       if (!db.objectStoreNames.contains("metadata")) {
+//         db.createObjectStore("metadata")
+//       }
+//     },
+//   })
+// }
 
-// Helper functions for IndexedDB operations
-const dbHelpers = {
-  async saveUsers(users) {
-    const db = await initDB()
-    const tx = db.transaction("users", "readwrite")
-    await tx.store.put(users, "usersList")
-    await tx.done
-  },
+// // Helper functions for IndexedDB operations
+// const dbHelpers = {
+//   async saveUsers(users) {
+//     const db = await initDB()
+//     const tx = db.transaction("users", "readwrite")
+//     await tx.store.put(users, "usersList")
+//     await tx.done
+//   },
 
-  async getUsers() {
-    try {
-      const db = await initDB()
-      return (await db.get("users", "usersList")) || []
-    } catch (error) {
-      console.error("Error getting users from IndexedDB:", error)
-      return []
-    }
-  },
+//   async getUsers() {
+//     try {
+//       const db = await initDB()
+//       return (await db.get("users", "usersList")) || []
+//     } catch (error) {
+//       console.error("Error getting users from IndexedDB:", error)
+//       return []
+//     }
+//   },
 
-  async saveFarmers(user, farmers) {
-    const db = await initDB()
-    const tx = db.transaction("farmers", "readwrite")
+//   async saveFarmers(user, farmers) {
+//     const db = await initDB()
+//     const tx = db.transaction("farmers", "readwrite")
 
-    // Store each farmer with a compound key
-    for (const farmer of farmers) {
-      await tx.store.put({
-        ...farmer,
-        userId: user, // Add user reference for querying
-      })
-    }
+//     // Store each farmer with a compound key
+//     for (const farmer of farmers) {
+//       await tx.store.put({
+//         ...farmer,
+//         userId: user, // Add user reference for querying
+//       })
+//     }
 
-    // Save the list of farmer IDs for this user
-    const metadataTx = db.transaction("metadata", "readwrite")
-    await metadataTx.store.put(
-      farmers.map((f) => f.id),
-      `${user}_farmerIds`,
-    )
+//     // Save the list of farmer IDs for this user
+//     const metadataTx = db.transaction("metadata", "readwrite")
+//     await metadataTx.store.put(
+//       farmers.map((f) => f.id),
+//       `${user}_farmerIds`,
+//     )
 
-    await tx.done
-    await metadataTx.done
-  },
+//     await tx.done
+//     await metadataTx.done
+//   },
 
-  async getFarmers(user) {
-    try {
-      const db = await initDB()
+//   async getFarmers(user) {
+//     try {
+//       const db = await initDB()
 
-      // Get all farmers for this user
-      const tx = db.transaction("farmers", "readonly")
-      let farmers = []
+//       // Get all farmers for this user
+//       const tx = db.transaction("farmers", "readonly")
+//       let farmers = []
 
-      try {
-        // Try to use the index if it exists
-        const index = tx.store.index("userId")
-        farmers = await index.getAll(user)
-      } catch (error) {
-        console.warn("Index not found, falling back to manual filtering")
-        // Fallback: get all farmers and filter manually
-        const allFarmers = await tx.store.getAll()
-        farmers = allFarmers.filter((farmer) => farmer.userId === user)
-      }
+//       try {
+//         // Try to use the index if it exists
+//         const index = tx.store.index("userId")
+//         farmers = await index.getAll(user)
+//       } catch (error) {
+//         console.warn("Index not found, falling back to manual filtering")
+//         // Fallback: get all farmers and filter manually
+//         const allFarmers = await tx.store.getAll()
+//         farmers = allFarmers.filter((farmer) => farmer.userId === user)
+//       }
 
-      await tx.done
-      return farmers || []
-    } catch (error) {
-      console.error(`Error getting farmers for user ${user} from IndexedDB:`, error)
-      return []
-    }
-  },
+//       await tx.done
+//       return farmers || []
+//     } catch (error) {
+//       console.error(`Error getting farmers for user ${user} from IndexedDB:`, error)
+//       return []
+//     }
+//   },
 
-  async getFarmersByIds(ids) {
-    try {
-      const db = await initDB()
-      const tx = db.transaction("farmers", "readonly")
+//   async getFarmersByIds(ids) {
+//     try {
+//       const db = await initDB()
+//       const tx = db.transaction("farmers", "readonly")
 
-      const farmers = []
-      for (const id of ids) {
-        const farmer = await tx.store.get(id)
-        if (farmer) farmers.push(farmer)
-      }
+//       const farmers = []
+//       for (const id of ids) {
+//         const farmer = await tx.store.get(id)
+//         if (farmer) farmers.push(farmer)
+//       }
 
-      await tx.done
-      return farmers
-    } catch (error) {
-      console.error("Error getting farmers by IDs from IndexedDB:", error)
-      return []
-    }
-  },
+//       await tx.done
+//       return farmers
+//     } catch (error) {
+//       console.error("Error getting farmers by IDs from IndexedDB:", error)
+//       return []
+//     }
+//   },
 
-  async getAllData() {
-    try {
-      const db = await initDB()
-      const users = (await db.get("users", "usersList")) || []
+//   async getAllData() {
+//     try {
+//       const db = await initDB()
+//       const users = (await db.get("users", "usersList")) || []
 
-      const farmersData = {}
-      for (const user of users) {
-        const farmerIds = (await db.get("metadata", `${user}_farmerIds`)) || []
-        const farmers = await this.getFarmersByIds(farmerIds)
-        farmersData[user] = farmers
-      }
+//       const farmersData = {}
+//       for (const user of users) {
+//         const farmerIds = (await db.get("metadata", `${user}_farmerIds`)) || []
+//         const farmers = await this.getFarmersByIds(farmerIds)
+//         farmersData[user] = farmers
+//       }
 
-      return { users, farmersData }
-    } catch (error) {
-      console.error("Error getting all data from IndexedDB:", error)
-      return { users: [], farmersData: {} }
-    }
-  },
-}
+//       return { users, farmersData }
+//     } catch (error) {
+//       console.error("Error getting all data from IndexedDB:", error)
+//       return { users: [], farmersData: {} }
+//     }
+//   },
+// }
+
+// const App = () => {
+//   const [farmers, setFarmers] = useState([])
+//   const [users, setUsers] = useState([])
+//   const [selectedUser, setSelectedUser] = useState("")
+//   const [selectedFarmer, setSelectedFarmer] = useState(null)
+//   const [searchTerm, setSearchTerm] = useState("")
+//   const [dataLoaded, setDataLoaded] = useState(false)
+//   const [syncModalOpen, setSyncModalOpen] = useState(false)
+//   const [syncData, setSyncData] = useState(null)
+//   const [syncResults, setSyncResults] = useState(null)
+//   const [disputedFieldChoices, setDisputedFieldChoices] = useState({})
+
+//   useEffect(() => {
+//     const loadInitialData = async () => {
+//       try {
+//         // Try to load data from IndexedDB first
+//         const users = await dbHelpers.getUsers()
+//         setUsers(users || [])
+
+//         if (users.length > 0 && !selectedUser) {
+//           setSelectedUser(users[0])
+//           const userFarmers = await dbHelpers.getFarmers(users[0])
+//           setFarmers(userFarmers || [])
+//         }
+
+//         setDataLoaded(true)
+
+//         // Fetch data from Firebase
+//         const usersRef = ref(database)
+//         onValue(usersRef, async (snapshot) => {
+//           const data = snapshot.val()
+//           if (data) {
+//             const userNames = Object.keys(data)
+//             setUsers(userNames)
+
+//             // Save users to IndexedDB
+//             await dbHelpers.saveUsers(userNames)
+
+//             if (!selectedUser && userNames.length > 0) {
+//               setSelectedUser(userNames[0])
+//             }
+
+//             // Process farmers data for each user
+//             for (const userName of userNames) {
+//               if (data[userName] && data[userName].farmers) {
+//                 const newFarmersArray = Object.keys(data[userName].farmers).map((key) => ({
+//                   id: key,
+//                   ...data[userName].farmers[key],
+//                 }))
+
+//                 // Get existing farmers from IndexedDB
+//                 const existingFarmers = await dbHelpers.getFarmers(userName)
+
+//                 let updatedFarmers = []
+
+//                 if (existingFarmers.length > 0) {
+//                   // Merge existing and new farmers
+//                   updatedFarmers = existingFarmers.map((existingFarmer) => {
+//                     const newEntry = newFarmersArray.find((f) => f.id === existingFarmer.id)
+//                     if (newEntry) {
+//                       return {
+//                         ...existingFarmer,
+//                         verify: mergeArray(existingFarmer.verify),
+//                         assessment: mergeArray(existingFarmer.assessment),
+//                         workplan: newEntry.workplan, // Always replace workplan with latest data
+//                       }
+//                     }
+//                     return existingFarmer
+//                   })
+
+//                   // Add new farmers that don't exist yet
+//                   newFarmersArray.forEach((newFarmer) => {
+//                     if (!updatedFarmers.some((f) => f.id === newFarmer.id)) {
+//                       updatedFarmers.push(newFarmer)
+//                     }
+//                   })
+//                 } else {
+//                   updatedFarmers = newFarmersArray
+//                 }
+
+//                 // Save updated farmers to IndexedDB
+//                 await dbHelpers.saveFarmers(userName, updatedFarmers)
+
+//                 // Update state if this is the selected user
+//                 if (userName === selectedUser || (!selectedUser && userName === userNames[0])) {
+//                   setFarmers(updatedFarmers)
+//                 }
+//               }
+//             }
+
+//             setDataLoaded(true)
+//           }
+//         })
+//       } catch (error) {
+//         console.error("Error loading initial data:", error)
+//         setDataLoaded(true)
+//       }
+//     }
+
+//     loadInitialData()
+//   }, [])
+
+//   useEffect(() => {
+//     if (!selectedUser || !dataLoaded) return
+
+//     const loadUserFarmers = async () => {
+//       try {
+//         // Try to get farmers from IndexedDB first
+//         const userFarmers = await dbHelpers.getFarmers(selectedUser)
+//         if (userFarmers.length > 0) {
+//           setFarmers(userFarmers)
+//           return
+//         }
+
+//         // If not in IndexedDB, fetch from Firebase
+//         const farmersRef = ref(database, `${selectedUser}/farmers`)
+//         onValue(farmersRef, async (snapshot) => {
+//           const data = snapshot.val()
+//           if (data) {
+//             const farmersArray = Object.keys(data).map((key) => ({
+//               id: key,
+//               ...data[key],
+//             }))
+
+//             setFarmers(farmersArray)
+
+//             // Save to IndexedDB
+//             await dbHelpers.saveFarmers(selectedUser, farmersArray)
+//           } else {
+//             setFarmers([])
+//           }
+//         })
+//       } catch (error) {
+//         console.error(`Error loading farmers for user ${selectedUser}:`, error)
+//       }
+//     }
+
+//     loadUserFarmers()
+//   }, [selectedUser, dataLoaded])
+
+//   const filteredFarmers = farmers.filter(
+//     (farmer) =>
+//       farmer.farmer_name &&
+//       farmer.farmer_name.trim() !== "" &&
+//       (farmer.farmer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+//         farmer.farmer_id?.includes(searchTerm) ||
+//         farmer.nutmeg_card_number?.includes(searchTerm)),
+//   )
+
+//   // Helper function to merge new data while avoiding duplicates
+//   const mergeArray = (existingArray = [], newArray = []) => {
+//     const existingIds = new Set(existingArray.map((item) => item.id))
+//     const mergedArray = [...existingArray]
+
+//     newArray.forEach((newItem) => {
+//       if (!existingIds.has(newItem.id)) {
+//         mergedArray.push(newItem)
+//       }
+//     })
+
+//     return mergedArray
+//   }
+
+//   const refreshData = async () => {
+//     try {
+//       // Get all data from IndexedDB
+//       const localData = await dbHelpers.getAllData()
+
+//       if (!localData.users.length) {
+//         fetchFreshData()
+//         return
+//       }
+
+//       const usersRef = ref(database)
+//       onValue(usersRef, (snapshot) => {
+//         const firebaseData = snapshot.val()
+//         if (!firebaseData) {
+//           setDataLoaded(true)
+//           return
+//         }
+
+//         const userNames = Object.keys(firebaseData)
+//         const farmersDataFromFirebase = {}
+
+//         userNames.forEach((userName) => {
+//           if (firebaseData[userName] && firebaseData[userName].farmers) {
+//             const farmersArray = Object.keys(firebaseData[userName].farmers).map((key) => ({
+//               id: key,
+//               ...firebaseData[userName].farmers[key],
+//             }))
+//             farmersDataFromFirebase[userName] = farmersArray
+//           } else {
+//             farmersDataFromFirebase[userName] = []
+//           }
+//         })
+
+//         showSyncOptions(localData, { users: userNames, farmersData: farmersDataFromFirebase })
+//       })
+//     } catch (error) {
+//       console.error("Error refreshing data:", error)
+//       alert("Error refreshing data. Please try again.")
+//     }
+//   }
+
+//   const fetchFreshData = () => {
+//     setDataLoaded(false)
+
+//     // Clear IndexedDB data
+//     const clearDB = async () => {
+//       try {
+//         const db = await initDB()
+//         const tx1 = db.transaction("users", "readwrite")
+//         await tx1.store.clear()
+//         await tx1.done
+
+//         const tx2 = db.transaction("farmers", "readwrite")
+//         await tx2.store.clear()
+//         await tx2.done
+
+//         const tx3 = db.transaction("metadata", "readwrite")
+//         await tx3.store.clear()
+//         await tx3.done
+//       } catch (error) {
+//         console.error("Error clearing IndexedDB:", error)
+//       }
+//     }
+
+//     clearDB().then(() => {
+//       const usersRef = ref(database)
+//       onValue(usersRef, async (snapshot) => {
+//         const data = snapshot.val()
+//         if (data) {
+//           const userNames = Object.keys(data)
+//           setUsers(userNames)
+
+//           // Save users to IndexedDB
+//           await dbHelpers.saveUsers(userNames)
+
+//           if (!selectedUser && userNames.length > 0) {
+//             setSelectedUser(userNames[0])
+//           }
+
+//           // Process and save farmers data
+//           for (const userName of userNames) {
+//             if (data[userName] && data[userName].farmers) {
+//               const farmersArray = Object.keys(data[userName].farmers).map((key) => ({
+//                 id: key,
+//                 ...data[userName].farmers[key],
+//               }))
+
+//               // Save to IndexedDB
+//               await dbHelpers.saveFarmers(userName, farmersArray)
+
+//               // Update state if this is the selected user
+//               if (userName === selectedUser || (!selectedUser && userName === userNames[0])) {
+//                 setFarmers(farmersArray)
+//               }
+//             }
+//           }
+
+//           setDataLoaded(true)
+//         }
+//       })
+//     })
+//   }
+
+//   const showSyncOptions = (localData, firebaseData) => {
+//     const results = analyzeDifferences(localData, firebaseData)
+//     setSyncResults(results)
+//     setSyncData({ localData, firebaseData })
+//     setSyncModalOpen(true)
+//     setDataLoaded(true)
+//   }
+
+//   const analyzeDifferences = (localData, firebaseData) => {
+//     const results = {
+//       newUsers: [],
+//       newFarmers: {},
+//       disputedFarmers: {},
+//     }
+
+//     firebaseData.users.forEach((user) => {
+//       if (!localData.users.includes(user)) {
+//         results.newUsers.push(user)
+//       }
+//     })
+
+//     firebaseData.users.forEach((user) => {
+//       if (!localData.farmersData[user]) {
+//         results.newFarmers[user] = firebaseData.farmersData[user] || []
+//         return
+//       }
+
+//       const localFarmers = localData.farmersData[user] || []
+//       const firebaseFarmers = firebaseData.farmersData[user] || []
+
+//       results.newFarmers[user] = []
+//       results.disputedFarmers[user] = []
+
+//       firebaseFarmers.forEach((firebaseFarmer) => {
+//         const localFarmer = localFarmers.find((f) => f.id === firebaseFarmer.id)
+
+//         if (!localFarmer) {
+//           results.newFarmers[user].push(firebaseFarmer)
+//         } else {
+//           if (JSON.stringify(localFarmer) !== JSON.stringify(firebaseFarmer)) {
+//             results.disputedFarmers[user].push({
+//               local: localFarmer,
+//               firebase: firebaseFarmer,
+//             })
+//           }
+//         }
+//       })
+
+//       if (results.newFarmers[user].length === 0) {
+//         delete results.newFarmers[user]
+//       }
+//       if (results.disputedFarmers[user].length === 0) {
+//         delete results.disputedFarmers[user]
+//       }
+//     })
+
+//     return results
+//   }
+
+//   const getFieldDifferences = (localFarmer, firebaseFarmer) => {
+//     const differences = []
+
+//     const compareFields = (local, firebase, prefix = "") => {
+//       const allKeys = [...new Set([...Object.keys(local), ...Object.keys(firebase)])]
+
+//       allKeys.forEach((key) => {
+//         if (
+//           key === "id" ||
+//           (typeof local[key] === "object" && local[key] !== null) ||
+//           (typeof firebase[key] === "object" && firebase[key] !== null)
+//         ) {
+//           return
+//         }
+
+//         if (local[key] !== firebase[key]) {
+//           differences.push({
+//             key: prefix ? `${prefix}.${key}` : key,
+//             localValue: local[key],
+//             firebaseValue: firebase[key],
+//           })
+//         }
+//       })
+//     }
+
+//     compareFields(localFarmer, firebaseFarmer)
+//       ;["verify", "assessment", "workplan"].forEach((arrayKey) => {
+//         if (localFarmer[arrayKey] && firebaseFarmer[arrayKey]) {
+//           const maxLength = Math.max(localFarmer[arrayKey].length, firebaseFarmer[arrayKey].length)
+
+//           for (let i = 0; i < maxLength; i++) {
+//             const localItem = localFarmer[arrayKey][i] || {}
+//             const firebaseItem = firebaseFarmer[arrayKey][i] || {}
+
+//             compareFields(localItem, firebaseItem, `${arrayKey}[${i}]`)
+//           }
+//         } else if (localFarmer[arrayKey] || firebaseFarmer[arrayKey]) {
+//           differences.push({
+//             key: arrayKey,
+//             localValue: localFarmer[arrayKey] ? `${localFarmer[arrayKey].length} items` : "None",
+//             firebaseValue: firebaseFarmer[arrayKey] ? `${firebaseFarmer[arrayKey].length} items` : "None",
+//           })
+//         }
+//       })
+
+//     return differences
+//   }
+
+//   const handleFieldChoice = (user, farmerId, fieldKey, choice) => {
+//     setDisputedFieldChoices((prev) => {
+//       const newChoices = { ...prev }
+
+//       if (!newChoices[user]) {
+//         newChoices[user] = {}
+//       }
+
+//       if (!newChoices[user][farmerId]) {
+//         newChoices[user][farmerId] = {}
+//       }
+
+//       newChoices[user][farmerId][fieldKey] = choice
+
+//       return newChoices
+//     })
+//   }
+
+//   const applySyncDecisions = async () => {
+//     if (!syncData) return
+
+//     try {
+//       const { localData, firebaseData } = syncData
+//       const updatedData = { ...localData }
+
+//       // Update users
+//       syncResults.newUsers.forEach((user) => {
+//         if (!updatedData.users.includes(user)) {
+//           updatedData.users.push(user)
+//         }
+//       })
+
+//       // Save updated users to IndexedDB
+//       await dbHelpers.saveUsers(updatedData.users)
+
+//       // Process new farmers
+//       for (const user of Object.keys(syncResults.newFarmers)) {
+//         if (!updatedData.farmersData[user]) {
+//           updatedData.farmersData[user] = []
+//         }
+
+//         const newFarmers = syncResults.newFarmers[user]
+//         updatedData.farmersData[user] = [...updatedData.farmersData[user], ...newFarmers]
+
+//         // Save new farmers to IndexedDB
+//         await dbHelpers.saveFarmers(user, updatedData.farmersData[user])
+//       }
+
+//       // Process disputed farmers
+//       for (const user of Object.keys(syncResults.disputedFarmers)) {
+//         if (!updatedData.farmersData[user]) {
+//           updatedData.farmersData[user] = []
+//         }
+
+//         for (const disputedItem of syncResults.disputedFarmers[user]) {
+//           const { local: localFarmer, firebase: firebaseFarmer } = disputedItem
+//           const farmerId = localFarmer.id
+
+//           const farmerIndex = updatedData.farmersData[user].findIndex((f) => f.id === farmerId)
+//           const updatedFarmer =
+//             farmerIndex !== -1 ? { ...updatedData.farmersData[user][farmerIndex] } : { ...localFarmer }
+
+//           if (disputedFieldChoices[user]?.[farmerId]) {
+//             Object.entries(disputedFieldChoices[user][farmerId]).forEach(([fieldKey, choice]) => {
+//               if (choice === "firebase") {
+//                 const fieldPath = fieldKey.split(".")
+//                 let currentFirebaseValue = firebaseFarmer
+//                 let currentUpdatedValue = updatedFarmer
+
+//                 for (let i = 0; i < fieldPath.length - 1; i++) {
+//                   const pathPart = fieldPath[i]
+//                   const arrayMatch = pathPart.match(/^(.*)\[(\d+)\]$/)
+
+//                   if (arrayMatch) {
+//                     const [_, arrayName, index] = arrayMatch
+//                     currentFirebaseValue = currentFirebaseValue[arrayName][index]
+//                     if (!currentUpdatedValue[arrayName]) {
+//                       currentUpdatedValue[arrayName] = []
+//                     }
+//                     if (!currentUpdatedValue[arrayName][index]) {
+//                       currentUpdatedValue[arrayName][index] = {}
+//                     }
+//                     currentUpdatedValue = currentUpdatedValue[arrayName][index]
+//                   } else {
+//                     currentFirebaseValue = currentFirebaseValue[pathPart]
+//                     if (!currentUpdatedValue[pathPart]) {
+//                       currentUpdatedValue[pathPart] = {}
+//                     }
+//                     currentUpdatedValue = currentUpdatedValue[pathPart]
+//                   }
+//                 }
+
+//                 const finalKey = fieldPath[fieldPath.length - 1]
+//                 currentUpdatedValue[finalKey] = currentFirebaseValue[finalKey]
+//               }
+//             })
+//           }
+
+//           if (farmerIndex !== -1) {
+//             updatedData.farmersData[user][farmerIndex] = updatedFarmer
+//           } else {
+//             updatedData.farmersData[user].push(updatedFarmer)
+//           }
+//         }
+
+//         // Save updated farmers to IndexedDB
+//         await dbHelpers.saveFarmers(user, updatedData.farmersData[user])
+//       }
+
+//       // Update state
+//       setUsers(updatedData.users)
+//       if (selectedUser) {
+//         const updatedFarmers = updatedData.farmersData[selectedUser] || []
+//         setFarmers(updatedFarmers)
+
+//         if (selectedFarmer) {
+//           const updatedSelectedFarmer = updatedFarmers.find((f) => f.id === selectedFarmer.id)
+//           if (updatedSelectedFarmer) {
+//             setSelectedFarmer(updatedSelectedFarmer)
+//           }
+//         }
+//       }
+
+//       setSyncModalOpen(false)
+//       setSyncData(null)
+//       setSyncResults(null)
+//       setDisputedFieldChoices({})
+//     } catch (error) {
+//       console.error("Error applying sync decisions:", error)
+//       alert("Error applying changes. Please try again.")
+//     }
+//   }
+
+//   const handleFlagVerify = async (index) => {
+//     try {
+//       const updatedVerify = [...selectedFarmer.verify]
+//       updatedVerify[index] = {
+//         ...updatedVerify[index],
+//         flagged: true,
+//       }
+
+//       const updatedFarmer = { ...selectedFarmer, verify: updatedVerify }
+//       const updatedFarmers = farmers.map((farmer) => (farmer.id === selectedFarmer.id ? updatedFarmer : farmer))
+
+//       setFarmers(updatedFarmers)
+//       setSelectedFarmer(updatedFarmer)
+
+//       // Update in IndexedDB
+//       await dbHelpers.saveFarmers(selectedUser, updatedFarmers)
+//     } catch (error) {
+//       console.error("Error flagging verify:", error)
+//       alert("Error flagging plot. Please try again.")
+//     }
+//   }
+
+//   const handleFlagAssessment = async (index) => {
+//     try {
+//       const updatedAssessment = [...selectedFarmer.assessment]
+//       updatedAssessment[index] = {
+//         ...updatedAssessment[index],
+//         flagged: true,
+//       }
+
+//       const updatedFarmer = { ...selectedFarmer, assessment: updatedAssessment }
+//       const updatedFarmers = farmers.map((farmer) => (farmer.id === selectedFarmer.id ? updatedFarmer : farmer))
+
+//       setFarmers(updatedFarmers)
+//       setSelectedFarmer(updatedFarmer)
+
+//       // Update in IndexedDB
+//       await dbHelpers.saveFarmers(selectedUser, updatedFarmers)
+//     } catch (error) {
+//       console.error("Error flagging assessment:", error)
+//       alert("Error flagging assessment. Please try again.")
+//     }
+//   }
+
+//   const handleFlagWorkplan = async (index) => {
+//     try {
+//       const updatedWorkplan = [...selectedFarmer.workplan]
+//       updatedWorkplan[index] = {
+//         ...updatedWorkplan[index],
+//         flagged: true,
+//       }
+
+//       const updatedFarmer = { ...selectedFarmer, workplan: updatedWorkplan }
+//       const updatedFarmers = farmers.map((farmer) => (farmer.id === selectedFarmer.id ? updatedFarmer : farmer))
+
+//       setFarmers(updatedFarmers)
+//       setSelectedFarmer(updatedFarmer)
+
+//       // Update in IndexedDB
+//       await dbHelpers.saveFarmers(selectedUser, updatedFarmers)
+//     } catch (error) {
+//       console.error("Error flagging workplan:", error)
+//       alert("Error flagging workplan. Please try again.")
+//     }
+//   }
+
+//   const handleFlagFarmer = async () => {
+//     try {
+//       const updatedFarmer = { ...selectedFarmer, flagged: true }
+//       const updatedFarmers = farmers.map((farmer) => (farmer.id === selectedFarmer.id ? updatedFarmer : farmer))
+
+//       setFarmers(updatedFarmers)
+//       setSelectedFarmer(updatedFarmer)
+
+//       // Update in IndexedDB
+//       await dbHelpers.saveFarmers(selectedUser, updatedFarmers)
+//     } catch (error) {
+//       console.error("Error flagging farmer:", error)
+//       alert("Error flagging farmer. Please try again.")
+//     }
+//   }
+
+//   const handleDownloadJSON = async () => {
+//     try {
+//       // Get all data from IndexedDB
+//       const data = await dbHelpers.getAllData()
+//       if (!data || !data.users || data.users.length === 0) {
+//         alert("No data available to download.")
+//         return
+//       }
+
+//       const allUsers = data.users || []
+//       const finalData = {}
+
+//       // Process data for all users
+//       allUsers.forEach((user) => {
+//         const farmersData = data.farmersData[user] || []
+//         const userFarmers = {}
+
+//         // Process each farmer for this user
+//         farmersData.forEach((farmer) => {
+//           // Skip flagged farmers or farmers with FLAGGED in their name or empty farmer_name
+//           if (
+//             farmer.flagged ||
+//             farmer.farmer_name?.includes("FLAGGED") ||
+//             !farmer.farmer_name ||
+//             farmer.farmer_name.trim() === ""
+//           ) {
+//             return
+//           }
+
+//           // Create a sanitized key for the farmer
+//           const sanitizedKey = `${farmer.farmer_name} ${farmer.id}`
+//             .replace(/\./g, "_")
+//             .replace(/#/g, "_")
+//             .replace(/\$/g, "_")
+//             .replace(/\//g, "_")
+//             .replace(/\[/g, "_")
+//             .replace(/\]/g, "_")
+
+//           // Filter out flagged verify entries
+//           const filteredVerify = farmer.verify ? farmer.verify.filter((v) => !v.flagged) : []
+
+//           // Filter out flagged assessment entries
+//           const filteredAssessment = farmer.assessment ? farmer.assessment.filter((a) => !a.flagged) : []
+
+//           // Filter out flagged workplan entries
+//           const filteredWorkplan = farmer.workplan ? farmer.workplan.filter((w) => !w.flagged) : []
+
+//           // Structure the farmer data
+//           userFarmers[sanitizedKey] = {
+//             ...farmer,
+//             verify: filteredVerify,
+//             assessment: filteredAssessment,
+//             workplan: filteredWorkplan,
+//           }
+//         })
+
+//         // Add this user's farmers to the final data
+//         finalData[user] = {
+//           farmers: userFarmers,
+//         }
+//       })
+
+//       // Convert to JSON string with pretty formatting
+//       const jsonString = JSON.stringify(finalData, null, 2)
+
+//       // Create a Blob from the JSON data
+//       const blob = new Blob([jsonString], { type: "application/json" })
+
+//       // Create an object URL for the Blob
+//       const url = URL.createObjectURL(blob)
+
+//       // Create a download link for the JSON file
+//       const a = document.createElement("a")
+//       a.href = url
+//       a.download = `all_farmers_data.json`
+//       a.click()
+
+//       // Clean up the URL object
+//       URL.revokeObjectURL(url)
+//     } catch (error) {
+//       console.error("Error downloading JSON:", error)
+//       alert("Failed to download JSON data. See console for details.")
+//     }
+//   }
+
+// const generatePDFReport = (data) => {
+//   try {
+//     const doc = new jsPDF()
+//     // Add autoTable to jsPDF prototype if it's not already there
+//     if (typeof doc.autoTable !== "function") {
+//       autoTable(doc)
+//     }
+
+//     const allUsers = data.users || []
+//     let totalFarmers = 0
+//     const farmersByUser = {}
+//     const farmersByDate = {}
+
+//     // Process data
+//     allUsers.forEach((user) => {
+//       const farmersData = data.farmersData[user] || []
+//       // Filter out flagged farmers or farmers with FLAGGED in their name
+//       const validFarmers = farmersData.filter((farmer) => !farmer.flagged && !farmer.farmer_name.includes("FLAGGED"))
+
+//       farmersByUser[user] = validFarmers.length
+//       totalFarmers += validFarmers.length
+
+//       // Count farmers by date
+//       validFarmers.forEach((farmer) => {
+//         if (farmer.dateCreated) {
+//           const date = new Date(farmer.dateCreated).toLocaleDateString()
+//           farmersByDate[date] = (farmersByDate[date] || 0) + 1
+//         }
+//       })
+//     })
+
+//     // Add title
+//     doc.setFontSize(18)
+//     doc.text("Farmer Assessment Data Report", 14, 22)
+//     doc.setFontSize(12)
+//     doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30)
+
+//     // Add total farmers
+//     doc.setFontSize(14)
+//     doc.text(`Total Number of Farmers: ${totalFarmers}`, 14, 40)
+
+//     // Add farmers by user table
+//     doc.setFontSize(14)
+//     doc.text("Farmers per User", 14, 50)
+
+//     const userTableData = Object.entries(farmersByUser).map(([user, count]) => [user, count])
+//     doc.autoTable({
+//       startY: 55,
+//       head: [["User", "Number of Farmers"]],
+//       body: userTableData,
+//     })
+
+//     // Add farmers by date table
+//     const dateTableY = doc.autoTable.previous.finalY + 10
+//     doc.setFontSize(14)
+//     doc.text("Farmers Added by Date", 14, dateTableY)
+
+//     const dateTableData = Object.entries(farmersByDate).map(([date, count]) => [date, count])
+//     doc.autoTable({
+//       startY: dateTableY + 5,
+//       head: [["Date", "Number of Farmers Added"]],
+//       body: dateTableData,
+//     })
+
+//     // Create charts on a new page
+//     doc.addPage()
+//     doc.setFontSize(16)
+//     doc.text("Data Visualization", 14, 20)
+
+//     // Create canvas for charts
+//     const canvas = document.createElement("canvas")
+//     canvas.width = 500
+//     canvas.height = 300
+//     document.body.appendChild(canvas)
+
+//     try {
+//       // Create user chart
+//       const userCtx = canvas.getContext("2d")
+//       new Chart(userCtx, {
+//         type: "bar",
+//         data: {
+//           labels: Object.keys(farmersByUser),
+//           datasets: [
+//             {
+//               label: "Number of Farmers",
+//               data: Object.values(farmersByUser),
+//               backgroundColor: "rgba(54, 162, 235, 0.6)",
+//               borderColor: "rgba(54, 162, 235, 1)",
+//               borderWidth: 1,
+//             },
+//           ],
+//         },
+//         options: {
+//           scales: {
+//             y: {
+//               beginAtZero: true,
+//             },
+//           },
+//           animation: false,
+//         },
+//       })
+
+//       // Add user chart to PDF
+//       doc.text("Farmers per User", 14, 30)
+//       doc.addImage(canvas.toDataURL(), "PNG", 10, 35, 180, 100)
+
+//       // Clear canvas for next chart
+//       userCtx.clearRect(0, 0, canvas.width, canvas.height)
+
+//       // Create date chart
+//       const dateLabels = Object.keys(farmersByDate)
+//       const dateData = Object.values(farmersByDate)
+
+//       new Chart(userCtx, {
+//         type: "line",
+//         data: {
+//           labels: dateLabels,
+//           datasets: [
+//             {
+//               label: "Farmers Added",
+//               data: dateData,
+//               fill: false,
+//               borderColor: "rgba(75, 192, 192, 1)",
+//               tension: 0.1,
+//             },
+//           ],
+//         },
+//         options: {
+//           scales: {
+//             y: {
+//               beginAtZero: true,
+//             },
+//           },
+//           animation: false,
+//         },
+//       })
+
+//       // Add date chart to PDF
+//       doc.text("Farmers Added by Date", 14, 150)
+//       doc.addImage(canvas.toDataURL(), "PNG", 10, 155, 180, 100)
+//     } catch (chartError) {
+//       console.error("Error creating charts:", chartError)
+//       doc.text("Error generating charts. See console for details.", 14, 30)
+//     }
+
+//     // Remove canvas
+//     document.body.removeChild(canvas)
+
+//     // Save the PDF
+//     doc.save("farmer_assessment_report.pdf")
+//   } catch (error) {
+//     console.error("Error generating PDF report:", error)
+//     alert("Failed to generate PDF report. Please check if all required libraries are installed.")
+//   }
+// }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import { useState, useEffect } from "react";
+import { database, ref, onValue } from "./firebase";
+// import { jsPDF } from "jspdf";
+// import autoTable from "jspdf-autotable";
+// import Chart from "chart.js/auto";
+import { firebaseThreeHelpers } from "./firebase-three";
+// import { uploadToSecondaryFirebase } from "./second-firebase";
 
 const App = () => {
-  const [farmers, setFarmers] = useState([])
-  const [users, setUsers] = useState([])
-  const [selectedUser, setSelectedUser] = useState("")
-  const [selectedFarmer, setSelectedFarmer] = useState(null)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [dataLoaded, setDataLoaded] = useState(false)
-  const [syncModalOpen, setSyncModalOpen] = useState(false)
-  const [syncData, setSyncData] = useState(null)
-  const [syncResults, setSyncResults] = useState(null)
-  const [disputedFieldChoices, setDisputedFieldChoices] = useState({})
+  const [farmers, setFarmers] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [selectedUser, setSelectedUser] = useState("");
+  const [selectedFarmer, setSelectedFarmer] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [dataLoaded, setDataLoaded] = useState(false);
+
 
   useEffect(() => {
     const loadInitialData = async () => {
       try {
-        // Try to load data from IndexedDB first
-        const users = await dbHelpers.getUsers()
-        setUsers(users || [])
+        // Try to load data from Firebase Three first
+        const users = await firebaseThreeHelpers.getUsers();
+        setUsers(users || []);
 
         if (users.length > 0 && !selectedUser) {
-          setSelectedUser(users[0])
-          const userFarmers = await dbHelpers.getFarmers(users[0])
-          setFarmers(userFarmers || [])
+          setSelectedUser(users[0]);
+          const userFarmers = await firebaseThreeHelpers.getFarmers(users[0]);
+          setFarmers(userFarmers || []);
         }
 
-        setDataLoaded(true)
+        setDataLoaded(true);
 
-        // Fetch data from Firebase
-        const usersRef = ref(database)
+        // Fetch data from primary Firebase
+        const usersRef = ref(database);
         onValue(usersRef, async (snapshot) => {
-          const data = snapshot.val()
+          const data = snapshot.val();
           if (data) {
-            const userNames = Object.keys(data)
-            setUsers(userNames)
+            const userNames = Object.keys(data);
+            setUsers(userNames);
 
-            // Save users to IndexedDB
-            await dbHelpers.saveUsers(userNames)
+            // Save users to Firebase Three
+            await firebaseThreeHelpers.saveUsers(userNames);
 
             if (!selectedUser && userNames.length > 0) {
-              setSelectedUser(userNames[0])
+              setSelectedUser(userNames[0]);
             }
 
             // Process farmers data for each user
@@ -1087,97 +1945,105 @@ const App = () => {
                 const newFarmersArray = Object.keys(data[userName].farmers).map((key) => ({
                   id: key,
                   ...data[userName].farmers[key],
-                }))
+                }));
 
-                // Get existing farmers from IndexedDB
-                const existingFarmers = await dbHelpers.getFarmers(userName)
+                // Get existing farmers from Firebase Three
+                const existingFarmers = await firebaseThreeHelpers.getFarmers(userName);
 
-                let updatedFarmers = []
+                let updatedFarmers = [];
 
                 if (existingFarmers.length > 0) {
                   // Merge existing and new farmers
                   updatedFarmers = existingFarmers.map((existingFarmer) => {
-                    const newEntry = newFarmersArray.find((f) => f.id === existingFarmer.id)
+                    const newEntry = newFarmersArray.find((f) => f.id === existingFarmer.id);
                     if (newEntry) {
                       return {
                         ...existingFarmer,
-                        verify: mergeArray(existingFarmer.verify),
-                        assessment: mergeArray(existingFarmer.assessment),
+                        verify: mergeArray(existingFarmer.verify, newEntry.verify),
+                        assessment: mergeArray(existingFarmer.assessment, newEntry.assessment),
                         workplan: newEntry.workplan, // Always replace workplan with latest data
-                      }
+                      };
                     }
-                    return existingFarmer
-                  })
+                    return existingFarmer;
+                  });
 
                   // Add new farmers that don't exist yet
                   newFarmersArray.forEach((newFarmer) => {
                     if (!updatedFarmers.some((f) => f.id === newFarmer.id)) {
-                      updatedFarmers.push(newFarmer)
+                      updatedFarmers.push(newFarmer);
                     }
-                  })
+                  });
                 } else {
-                  updatedFarmers = newFarmersArray
+                  updatedFarmers = newFarmersArray;
                 }
 
-                // Save updated farmers to IndexedDB
-                await dbHelpers.saveFarmers(userName, updatedFarmers)
+                // Save updated farmers to Firebase Three
+                await firebaseThreeHelpers.saveFarmers(userName, updatedFarmers);
 
                 // Update state if this is the selected user
                 if (userName === selectedUser || (!selectedUser && userName === userNames[0])) {
-                  setFarmers(updatedFarmers)
+                  setFarmers(updatedFarmers);
                 }
               }
             }
 
-            setDataLoaded(true)
+            setDataLoaded(true);
           }
-        })
+        });
       } catch (error) {
-        console.error("Error loading initial data:", error)
-        setDataLoaded(true)
+        console.error("Error loading initial data:", error);
+        setDataLoaded(true);
       }
-    }
+    };
 
-    loadInitialData()
-  }, [])
+    loadInitialData();
+  }, []);
 
   useEffect(() => {
-    if (!selectedUser || !dataLoaded) return
+    if (!selectedUser || !dataLoaded) return;
 
     const loadUserFarmers = async () => {
       try {
-        // Try to get farmers from IndexedDB first
-        const userFarmers = await dbHelpers.getFarmers(selectedUser)
+        // Try to get farmers from Firebase Three first
+        const userFarmers = await firebaseThreeHelpers.getFarmers(selectedUser);
         if (userFarmers.length > 0) {
-          setFarmers(userFarmers)
-          return
+          setFarmers(userFarmers);
+          return;
         }
 
-        // If not in IndexedDB, fetch from Firebase
-        const farmersRef = ref(database, `${selectedUser}/farmers`)
+        // If not in Firebase Three, fetch from primary Firebase
+        const farmersRef = ref(database, `${selectedUser}/farmers`);
         onValue(farmersRef, async (snapshot) => {
-          const data = snapshot.val()
+          const data = snapshot.val();
           if (data) {
             const farmersArray = Object.keys(data).map((key) => ({
               id: key,
               ...data[key],
-            }))
+            }));
 
-            setFarmers(farmersArray)
+            setFarmers(farmersArray);
 
-            // Save to IndexedDB
-            await dbHelpers.saveFarmers(selectedUser, farmersArray)
+            // Save to Firebase Three
+            await firebaseThreeHelpers.saveFarmers(selectedUser, farmersArray);
           } else {
-            setFarmers([])
+            setFarmers([]);
           }
-        })
+        });
       } catch (error) {
-        console.error(`Error loading farmers for user ${selectedUser}:`, error)
+        console.error(`Error loading farmers for user ${selectedUser}:`, error);
       }
-    }
+    };
 
-    loadUserFarmers()
-  }, [selectedUser, dataLoaded])
+    // Set up a listener for the selected user's farmers in Firebase Three
+    const unsubscribe = firebaseThreeHelpers.listenToUserFarmers(selectedUser, (farmersData) => {
+      setFarmers(farmersData);
+    });
+
+    loadUserFarmers();
+
+    // Clean up listener when component unmounts or selectedUser changes
+    return () => unsubscribe && unsubscribe();
+  }, [selectedUser, dataLoaded]);
 
   const filteredFarmers = farmers.filter(
     (farmer) =>
@@ -1186,687 +2052,24 @@ const App = () => {
       (farmer.farmer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         farmer.farmer_id?.includes(searchTerm) ||
         farmer.nutmeg_card_number?.includes(searchTerm)),
-  )
+  );
 
   // Helper function to merge new data while avoiding duplicates
   const mergeArray = (existingArray = [], newArray = []) => {
-    const existingIds = new Set(existingArray.map((item) => item.id))
-    const mergedArray = [...existingArray]
+    const existingIds = new Set(existingArray.map((item) => item.id));
+    const mergedArray = [...existingArray];
 
     newArray.forEach((newItem) => {
       if (!existingIds.has(newItem.id)) {
-        mergedArray.push(newItem)
+        mergedArray.push(newItem);
       }
-    })
+    });
 
-    return mergedArray
-  }
+    return mergedArray;
+  };
 
-  const refreshData = async () => {
-    try {
-      // Get all data from IndexedDB
-      const localData = await dbHelpers.getAllData()
 
-      if (!localData.users.length) {
-        fetchFreshData()
-        return
-      }
 
-      const usersRef = ref(database)
-      onValue(usersRef, (snapshot) => {
-        const firebaseData = snapshot.val()
-        if (!firebaseData) {
-          setDataLoaded(true)
-          return
-        }
-
-        const userNames = Object.keys(firebaseData)
-        const farmersDataFromFirebase = {}
-
-        userNames.forEach((userName) => {
-          if (firebaseData[userName] && firebaseData[userName].farmers) {
-            const farmersArray = Object.keys(firebaseData[userName].farmers).map((key) => ({
-              id: key,
-              ...firebaseData[userName].farmers[key],
-            }))
-            farmersDataFromFirebase[userName] = farmersArray
-          } else {
-            farmersDataFromFirebase[userName] = []
-          }
-        })
-
-        showSyncOptions(localData, { users: userNames, farmersData: farmersDataFromFirebase })
-      })
-    } catch (error) {
-      console.error("Error refreshing data:", error)
-      alert("Error refreshing data. Please try again.")
-    }
-  }
-
-  const fetchFreshData = () => {
-    setDataLoaded(false)
-
-    // Clear IndexedDB data
-    const clearDB = async () => {
-      try {
-        const db = await initDB()
-        const tx1 = db.transaction("users", "readwrite")
-        await tx1.store.clear()
-        await tx1.done
-
-        const tx2 = db.transaction("farmers", "readwrite")
-        await tx2.store.clear()
-        await tx2.done
-
-        const tx3 = db.transaction("metadata", "readwrite")
-        await tx3.store.clear()
-        await tx3.done
-      } catch (error) {
-        console.error("Error clearing IndexedDB:", error)
-      }
-    }
-
-    clearDB().then(() => {
-      const usersRef = ref(database)
-      onValue(usersRef, async (snapshot) => {
-        const data = snapshot.val()
-        if (data) {
-          const userNames = Object.keys(data)
-          setUsers(userNames)
-
-          // Save users to IndexedDB
-          await dbHelpers.saveUsers(userNames)
-
-          if (!selectedUser && userNames.length > 0) {
-            setSelectedUser(userNames[0])
-          }
-
-          // Process and save farmers data
-          for (const userName of userNames) {
-            if (data[userName] && data[userName].farmers) {
-              const farmersArray = Object.keys(data[userName].farmers).map((key) => ({
-                id: key,
-                ...data[userName].farmers[key],
-              }))
-
-              // Save to IndexedDB
-              await dbHelpers.saveFarmers(userName, farmersArray)
-
-              // Update state if this is the selected user
-              if (userName === selectedUser || (!selectedUser && userName === userNames[0])) {
-                setFarmers(farmersArray)
-              }
-            }
-          }
-
-          setDataLoaded(true)
-        }
-      })
-    })
-  }
-
-  const showSyncOptions = (localData, firebaseData) => {
-    const results = analyzeDifferences(localData, firebaseData)
-    setSyncResults(results)
-    setSyncData({ localData, firebaseData })
-    setSyncModalOpen(true)
-    setDataLoaded(true)
-  }
-
-  const analyzeDifferences = (localData, firebaseData) => {
-    const results = {
-      newUsers: [],
-      newFarmers: {},
-      disputedFarmers: {},
-    }
-
-    firebaseData.users.forEach((user) => {
-      if (!localData.users.includes(user)) {
-        results.newUsers.push(user)
-      }
-    })
-
-    firebaseData.users.forEach((user) => {
-      if (!localData.farmersData[user]) {
-        results.newFarmers[user] = firebaseData.farmersData[user] || []
-        return
-      }
-
-      const localFarmers = localData.farmersData[user] || []
-      const firebaseFarmers = firebaseData.farmersData[user] || []
-
-      results.newFarmers[user] = []
-      results.disputedFarmers[user] = []
-
-      firebaseFarmers.forEach((firebaseFarmer) => {
-        const localFarmer = localFarmers.find((f) => f.id === firebaseFarmer.id)
-
-        if (!localFarmer) {
-          results.newFarmers[user].push(firebaseFarmer)
-        } else {
-          if (JSON.stringify(localFarmer) !== JSON.stringify(firebaseFarmer)) {
-            results.disputedFarmers[user].push({
-              local: localFarmer,
-              firebase: firebaseFarmer,
-            })
-          }
-        }
-      })
-
-      if (results.newFarmers[user].length === 0) {
-        delete results.newFarmers[user]
-      }
-      if (results.disputedFarmers[user].length === 0) {
-        delete results.disputedFarmers[user]
-      }
-    })
-
-    return results
-  }
-
-  const getFieldDifferences = (localFarmer, firebaseFarmer) => {
-    const differences = []
-
-    const compareFields = (local, firebase, prefix = "") => {
-      const allKeys = [...new Set([...Object.keys(local), ...Object.keys(firebase)])]
-
-      allKeys.forEach((key) => {
-        if (
-          key === "id" ||
-          (typeof local[key] === "object" && local[key] !== null) ||
-          (typeof firebase[key] === "object" && firebase[key] !== null)
-        ) {
-          return
-        }
-
-        if (local[key] !== firebase[key]) {
-          differences.push({
-            key: prefix ? `${prefix}.${key}` : key,
-            localValue: local[key],
-            firebaseValue: firebase[key],
-          })
-        }
-      })
-    }
-
-    compareFields(localFarmer, firebaseFarmer)
-      ;["verify", "assessment", "workplan"].forEach((arrayKey) => {
-        if (localFarmer[arrayKey] && firebaseFarmer[arrayKey]) {
-          const maxLength = Math.max(localFarmer[arrayKey].length, firebaseFarmer[arrayKey].length)
-
-          for (let i = 0; i < maxLength; i++) {
-            const localItem = localFarmer[arrayKey][i] || {}
-            const firebaseItem = firebaseFarmer[arrayKey][i] || {}
-
-            compareFields(localItem, firebaseItem, `${arrayKey}[${i}]`)
-          }
-        } else if (localFarmer[arrayKey] || firebaseFarmer[arrayKey]) {
-          differences.push({
-            key: arrayKey,
-            localValue: localFarmer[arrayKey] ? `${localFarmer[arrayKey].length} items` : "None",
-            firebaseValue: firebaseFarmer[arrayKey] ? `${firebaseFarmer[arrayKey].length} items` : "None",
-          })
-        }
-      })
-
-    return differences
-  }
-
-  const handleFieldChoice = (user, farmerId, fieldKey, choice) => {
-    setDisputedFieldChoices((prev) => {
-      const newChoices = { ...prev }
-
-      if (!newChoices[user]) {
-        newChoices[user] = {}
-      }
-
-      if (!newChoices[user][farmerId]) {
-        newChoices[user][farmerId] = {}
-      }
-
-      newChoices[user][farmerId][fieldKey] = choice
-
-      return newChoices
-    })
-  }
-
-  const applySyncDecisions = async () => {
-    if (!syncData) return
-
-    try {
-      const { localData, firebaseData } = syncData
-      const updatedData = { ...localData }
-
-      // Update users
-      syncResults.newUsers.forEach((user) => {
-        if (!updatedData.users.includes(user)) {
-          updatedData.users.push(user)
-        }
-      })
-
-      // Save updated users to IndexedDB
-      await dbHelpers.saveUsers(updatedData.users)
-
-      // Process new farmers
-      for (const user of Object.keys(syncResults.newFarmers)) {
-        if (!updatedData.farmersData[user]) {
-          updatedData.farmersData[user] = []
-        }
-
-        const newFarmers = syncResults.newFarmers[user]
-        updatedData.farmersData[user] = [...updatedData.farmersData[user], ...newFarmers]
-
-        // Save new farmers to IndexedDB
-        await dbHelpers.saveFarmers(user, updatedData.farmersData[user])
-      }
-
-      // Process disputed farmers
-      for (const user of Object.keys(syncResults.disputedFarmers)) {
-        if (!updatedData.farmersData[user]) {
-          updatedData.farmersData[user] = []
-        }
-
-        for (const disputedItem of syncResults.disputedFarmers[user]) {
-          const { local: localFarmer, firebase: firebaseFarmer } = disputedItem
-          const farmerId = localFarmer.id
-
-          const farmerIndex = updatedData.farmersData[user].findIndex((f) => f.id === farmerId)
-          const updatedFarmer =
-            farmerIndex !== -1 ? { ...updatedData.farmersData[user][farmerIndex] } : { ...localFarmer }
-
-          if (disputedFieldChoices[user]?.[farmerId]) {
-            Object.entries(disputedFieldChoices[user][farmerId]).forEach(([fieldKey, choice]) => {
-              if (choice === "firebase") {
-                const fieldPath = fieldKey.split(".")
-                let currentFirebaseValue = firebaseFarmer
-                let currentUpdatedValue = updatedFarmer
-
-                for (let i = 0; i < fieldPath.length - 1; i++) {
-                  const pathPart = fieldPath[i]
-                  const arrayMatch = pathPart.match(/^(.*)\[(\d+)\]$/)
-
-                  if (arrayMatch) {
-                    const [_, arrayName, index] = arrayMatch
-                    currentFirebaseValue = currentFirebaseValue[arrayName][index]
-                    if (!currentUpdatedValue[arrayName]) {
-                      currentUpdatedValue[arrayName] = []
-                    }
-                    if (!currentUpdatedValue[arrayName][index]) {
-                      currentUpdatedValue[arrayName][index] = {}
-                    }
-                    currentUpdatedValue = currentUpdatedValue[arrayName][index]
-                  } else {
-                    currentFirebaseValue = currentFirebaseValue[pathPart]
-                    if (!currentUpdatedValue[pathPart]) {
-                      currentUpdatedValue[pathPart] = {}
-                    }
-                    currentUpdatedValue = currentUpdatedValue[pathPart]
-                  }
-                }
-
-                const finalKey = fieldPath[fieldPath.length - 1]
-                currentUpdatedValue[finalKey] = currentFirebaseValue[finalKey]
-              }
-            })
-          }
-
-          if (farmerIndex !== -1) {
-            updatedData.farmersData[user][farmerIndex] = updatedFarmer
-          } else {
-            updatedData.farmersData[user].push(updatedFarmer)
-          }
-        }
-
-        // Save updated farmers to IndexedDB
-        await dbHelpers.saveFarmers(user, updatedData.farmersData[user])
-      }
-
-      // Update state
-      setUsers(updatedData.users)
-      if (selectedUser) {
-        const updatedFarmers = updatedData.farmersData[selectedUser] || []
-        setFarmers(updatedFarmers)
-
-        if (selectedFarmer) {
-          const updatedSelectedFarmer = updatedFarmers.find((f) => f.id === selectedFarmer.id)
-          if (updatedSelectedFarmer) {
-            setSelectedFarmer(updatedSelectedFarmer)
-          }
-        }
-      }
-
-      setSyncModalOpen(false)
-      setSyncData(null)
-      setSyncResults(null)
-      setDisputedFieldChoices({})
-    } catch (error) {
-      console.error("Error applying sync decisions:", error)
-      alert("Error applying changes. Please try again.")
-    }
-  }
-
-  const handleFlagVerify = async (index) => {
-    try {
-      const updatedVerify = [...selectedFarmer.verify]
-      updatedVerify[index] = {
-        ...updatedVerify[index],
-        flagged: true,
-      }
-
-      const updatedFarmer = { ...selectedFarmer, verify: updatedVerify }
-      const updatedFarmers = farmers.map((farmer) => (farmer.id === selectedFarmer.id ? updatedFarmer : farmer))
-
-      setFarmers(updatedFarmers)
-      setSelectedFarmer(updatedFarmer)
-
-      // Update in IndexedDB
-      await dbHelpers.saveFarmers(selectedUser, updatedFarmers)
-    } catch (error) {
-      console.error("Error flagging verify:", error)
-      alert("Error flagging plot. Please try again.")
-    }
-  }
-
-  const handleFlagAssessment = async (index) => {
-    try {
-      const updatedAssessment = [...selectedFarmer.assessment]
-      updatedAssessment[index] = {
-        ...updatedAssessment[index],
-        flagged: true,
-      }
-
-      const updatedFarmer = { ...selectedFarmer, assessment: updatedAssessment }
-      const updatedFarmers = farmers.map((farmer) => (farmer.id === selectedFarmer.id ? updatedFarmer : farmer))
-
-      setFarmers(updatedFarmers)
-      setSelectedFarmer(updatedFarmer)
-
-      // Update in IndexedDB
-      await dbHelpers.saveFarmers(selectedUser, updatedFarmers)
-    } catch (error) {
-      console.error("Error flagging assessment:", error)
-      alert("Error flagging assessment. Please try again.")
-    }
-  }
-
-  const handleFlagWorkplan = async (index) => {
-    try {
-      const updatedWorkplan = [...selectedFarmer.workplan]
-      updatedWorkplan[index] = {
-        ...updatedWorkplan[index],
-        flagged: true,
-      }
-
-      const updatedFarmer = { ...selectedFarmer, workplan: updatedWorkplan }
-      const updatedFarmers = farmers.map((farmer) => (farmer.id === selectedFarmer.id ? updatedFarmer : farmer))
-
-      setFarmers(updatedFarmers)
-      setSelectedFarmer(updatedFarmer)
-
-      // Update in IndexedDB
-      await dbHelpers.saveFarmers(selectedUser, updatedFarmers)
-    } catch (error) {
-      console.error("Error flagging workplan:", error)
-      alert("Error flagging workplan. Please try again.")
-    }
-  }
-
-  const handleFlagFarmer = async () => {
-    try {
-      const updatedFarmer = { ...selectedFarmer, flagged: true }
-      const updatedFarmers = farmers.map((farmer) => (farmer.id === selectedFarmer.id ? updatedFarmer : farmer))
-
-      setFarmers(updatedFarmers)
-      setSelectedFarmer(updatedFarmer)
-
-      // Update in IndexedDB
-      await dbHelpers.saveFarmers(selectedUser, updatedFarmers)
-    } catch (error) {
-      console.error("Error flagging farmer:", error)
-      alert("Error flagging farmer. Please try again.")
-    }
-  }
-
-  const handleDownloadJSON = async () => {
-    try {
-      // Get all data from IndexedDB
-      const data = await dbHelpers.getAllData()
-      if (!data || !data.users || data.users.length === 0) {
-        alert("No data available to download.")
-        return
-      }
-
-      const allUsers = data.users || []
-      const finalData = {}
-
-      // Process data for all users
-      allUsers.forEach((user) => {
-        const farmersData = data.farmersData[user] || []
-        const userFarmers = {}
-
-        // Process each farmer for this user
-        farmersData.forEach((farmer) => {
-          // Skip flagged farmers or farmers with FLAGGED in their name or empty farmer_name
-          if (
-            farmer.flagged ||
-            farmer.farmer_name?.includes("FLAGGED") ||
-            !farmer.farmer_name ||
-            farmer.farmer_name.trim() === ""
-          ) {
-            return
-          }
-
-          // Create a sanitized key for the farmer
-          const sanitizedKey = `${farmer.farmer_name} ${farmer.id}`
-            .replace(/\./g, "_")
-            .replace(/#/g, "_")
-            .replace(/\$/g, "_")
-            .replace(/\//g, "_")
-            .replace(/\[/g, "_")
-            .replace(/\]/g, "_")
-
-          // Filter out flagged verify entries
-          const filteredVerify = farmer.verify ? farmer.verify.filter((v) => !v.flagged) : []
-
-          // Filter out flagged assessment entries
-          const filteredAssessment = farmer.assessment ? farmer.assessment.filter((a) => !a.flagged) : []
-
-          // Filter out flagged workplan entries
-          const filteredWorkplan = farmer.workplan ? farmer.workplan.filter((w) => !w.flagged) : []
-
-          // Structure the farmer data
-          userFarmers[sanitizedKey] = {
-            ...farmer,
-            verify: filteredVerify,
-            assessment: filteredAssessment,
-            workplan: filteredWorkplan,
-          }
-        })
-
-        // Add this user's farmers to the final data
-        finalData[user] = {
-          farmers: userFarmers,
-        }
-      })
-
-      // Convert to JSON string with pretty formatting
-      const jsonString = JSON.stringify(finalData, null, 2)
-
-      // Create a Blob from the JSON data
-      const blob = new Blob([jsonString], { type: "application/json" })
-
-      // Create an object URL for the Blob
-      const url = URL.createObjectURL(blob)
-
-      // Create a download link for the JSON file
-      const a = document.createElement("a")
-      a.href = url
-      a.download = `all_farmers_data.json`
-      a.click()
-
-      // Clean up the URL object
-      URL.revokeObjectURL(url)
-    } catch (error) {
-      console.error("Error downloading JSON:", error)
-      alert("Failed to download JSON data. See console for details.")
-    }
-  }
-
-  // const generatePDFReport = (data) => {
-  //   try {
-  //     const doc = new jsPDF()
-  //     // Add autoTable to jsPDF prototype if it's not already there
-  //     if (typeof doc.autoTable !== "function") {
-  //       autoTable(doc)
-  //     }
-
-  //     const allUsers = data.users || []
-  //     let totalFarmers = 0
-  //     const farmersByUser = {}
-  //     const farmersByDate = {}
-
-  //     // Process data
-  //     allUsers.forEach((user) => {
-  //       const farmersData = data.farmersData[user] || []
-  //       // Filter out flagged farmers or farmers with FLAGGED in their name
-  //       const validFarmers = farmersData.filter((farmer) => !farmer.flagged && !farmer.farmer_name.includes("FLAGGED"))
-
-  //       farmersByUser[user] = validFarmers.length
-  //       totalFarmers += validFarmers.length
-
-  //       // Count farmers by date
-  //       validFarmers.forEach((farmer) => {
-  //         if (farmer.dateCreated) {
-  //           const date = new Date(farmer.dateCreated).toLocaleDateString()
-  //           farmersByDate[date] = (farmersByDate[date] || 0) + 1
-  //         }
-  //       })
-  //     })
-
-  //     // Add title
-  //     doc.setFontSize(18)
-  //     doc.text("Farmer Assessment Data Report", 14, 22)
-  //     doc.setFontSize(12)
-  //     doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30)
-
-  //     // Add total farmers
-  //     doc.setFontSize(14)
-  //     doc.text(`Total Number of Farmers: ${totalFarmers}`, 14, 40)
-
-  //     // Add farmers by user table
-  //     doc.setFontSize(14)
-  //     doc.text("Farmers per User", 14, 50)
-
-  //     const userTableData = Object.entries(farmersByUser).map(([user, count]) => [user, count])
-  //     doc.autoTable({
-  //       startY: 55,
-  //       head: [["User", "Number of Farmers"]],
-  //       body: userTableData,
-  //     })
-
-  //     // Add farmers by date table
-  //     const dateTableY = doc.autoTable.previous.finalY + 10
-  //     doc.setFontSize(14)
-  //     doc.text("Farmers Added by Date", 14, dateTableY)
-
-  //     const dateTableData = Object.entries(farmersByDate).map(([date, count]) => [date, count])
-  //     doc.autoTable({
-  //       startY: dateTableY + 5,
-  //       head: [["Date", "Number of Farmers Added"]],
-  //       body: dateTableData,
-  //     })
-
-  //     // Create charts on a new page
-  //     doc.addPage()
-  //     doc.setFontSize(16)
-  //     doc.text("Data Visualization", 14, 20)
-
-  //     // Create canvas for charts
-  //     const canvas = document.createElement("canvas")
-  //     canvas.width = 500
-  //     canvas.height = 300
-  //     document.body.appendChild(canvas)
-
-  //     try {
-  //       // Create user chart
-  //       const userCtx = canvas.getContext("2d")
-  //       new Chart(userCtx, {
-  //         type: "bar",
-  //         data: {
-  //           labels: Object.keys(farmersByUser),
-  //           datasets: [
-  //             {
-  //               label: "Number of Farmers",
-  //               data: Object.values(farmersByUser),
-  //               backgroundColor: "rgba(54, 162, 235, 0.6)",
-  //               borderColor: "rgba(54, 162, 235, 1)",
-  //               borderWidth: 1,
-  //             },
-  //           ],
-  //         },
-  //         options: {
-  //           scales: {
-  //             y: {
-  //               beginAtZero: true,
-  //             },
-  //           },
-  //           animation: false,
-  //         },
-  //       })
-
-  //       // Add user chart to PDF
-  //       doc.text("Farmers per User", 14, 30)
-  //       doc.addImage(canvas.toDataURL(), "PNG", 10, 35, 180, 100)
-
-  //       // Clear canvas for next chart
-  //       userCtx.clearRect(0, 0, canvas.width, canvas.height)
-
-  //       // Create date chart
-  //       const dateLabels = Object.keys(farmersByDate)
-  //       const dateData = Object.values(farmersByDate)
-
-  //       new Chart(userCtx, {
-  //         type: "line",
-  //         data: {
-  //           labels: dateLabels,
-  //           datasets: [
-  //             {
-  //               label: "Farmers Added",
-  //               data: dateData,
-  //               fill: false,
-  //               borderColor: "rgba(75, 192, 192, 1)",
-  //               tension: 0.1,
-  //             },
-  //           ],
-  //         },
-  //         options: {
-  //           scales: {
-  //             y: {
-  //               beginAtZero: true,
-  //             },
-  //           },
-  //           animation: false,
-  //         },
-  //       })
-
-  //       // Add date chart to PDF
-  //       doc.text("Farmers Added by Date", 14, 150)
-  //       doc.addImage(canvas.toDataURL(), "PNG", 10, 155, 180, 100)
-  //     } catch (chartError) {
-  //       console.error("Error creating charts:", chartError)
-  //       doc.text("Error generating charts. See console for details.", 14, 30)
-  //     }
-
-  //     // Remove canvas
-  //     document.body.removeChild(canvas)
-
-  //     // Save the PDF
-  //     doc.save("farmer_assessment_report.pdf")
-  //   } catch (error) {
-  //     console.error("Error generating PDF report:", error)
-  //     alert("Failed to generate PDF report. Please check if all required libraries are installed.")
-  //   }
-  // }
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
@@ -2220,178 +2423,7 @@ const App = () => {
             </div>
           )}
         </div>
-        {syncModalOpen && syncResults && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg shadow-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="p-6">
-                <h2 className="text-2xl font-bold mb-4">Sync Data</h2>
-                <p className="mb-6">We found differences between your local data and the Firebase database.</p>
 
-                {syncResults.newUsers.length > 0 && (
-                  <div className="mb-6">
-                    <h3 className="text-xl font-semibold mb-2">New Users</h3>
-                    <p className="mb-2">The following users will be added to your local data:</p>
-                    <ul className="list-disc pl-6 mb-4">
-                      {syncResults.newUsers.map((user) => (
-                        <li key={user}>{user}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {Object.keys(syncResults.newFarmers).length > 0 && (
-                  <div className="mb-6">
-                    <h3 className="text-xl font-semibold mb-2">New Farmers</h3>
-                    <p className="mb-2">The following new farmers will be added to your local data:</p>
-                    {Object.keys(syncResults.newFarmers).map((user) => (
-                      <div key={user} className="mb-4">
-                        <h4 className="font-medium">{user}</h4>
-                        <ul className="list-disc pl-6">
-                          {syncResults.newFarmers[user].map((farmer) => (
-                            <li key={farmer.id}>
-                              {farmer.farmer_name} (ID: {farmer.farmer_id})
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {Object.keys(syncResults.disputedFarmers).length > 0 && (
-                  <div className="mb-6">
-                    <h3 className="text-xl font-semibold mb-2">Disputed Farmers</h3>
-                    <p className="mb-2">
-                      The following farmers have different data in Firebase. Choose which fields to update:
-                    </p>
-                    <select onChange={(e) => setSelectedUser(e.target.value)} className="border rounded p-2 mb-4">
-                      <option value="">Select a user</option>
-                      {Object.keys(syncResults.disputedFarmers).map((user) => (
-                        <option key={user} value={user}>
-                          {user}
-                        </option>
-                      ))}
-                    </select>
-                    {selectedUser && (
-                      <div key={selectedUser} className="mb-6">
-                        <h4 className="font-medium text-lg mb-2">{selectedUser}</h4>
-                        <div className="space-y-6 mt-2">
-                          {syncResults.disputedFarmers[selectedUser].map((item) => {
-                            const differences = getFieldDifferences(item.local, item.firebase)
-                            return (
-                              <div key={item.firebase.id} className="border rounded-lg p-4">
-                                <h5 className="font-medium text-lg mb-4 pb-2 border-b">
-                                  {item.firebase.farmer_name} (ID: {item.firebase.farmer_id})
-                                </h5>
-
-                                {differences.length === 0 ? (
-                                  <p>No field differences detected.</p>
-                                ) : (
-                                  <div className="space-y-4">
-                                    {differences.map((diff, index) => (
-                                      <div
-                                        key={index}
-                                        className="grid grid-cols-1 md:grid-cols-3 gap-4 p-2 border-b pb-4"
-                                      >
-                                        <div className="font-medium">{diff.key}</div>
-                                        <div className="grid grid-cols-2 col-span-2 gap-4">
-                                          <div className="space-y-1">
-                                            <div className="text-sm text-gray-500">Local</div>
-                                            <div
-                                              className={`p-2 rounded ${!disputedFieldChoices[selectedUser]?.[item.firebase.id]?.[diff.key] ||
-                                                disputedFieldChoices[selectedUser]?.[item.firebase.id]?.[diff.key] ===
-                                                "local"
-                                                ? "bg-blue-50 border border-blue-200"
-                                                : "bg-gray-50"
-                                                }`}
-                                            >
-                                              {diff.localValue === undefined
-                                                ? "Not set"
-                                                : typeof diff.localValue === "object"
-                                                  ? JSON.stringify(diff.localValue)
-                                                  : String(diff.localValue)}
-                                            </div>
-                                          </div>
-                                          <div className="space-y-1">
-                                            <div className="text-sm text-gray-500">Firebase</div>
-                                            <div
-                                              className={`p-2 rounded ${disputedFieldChoices[selectedUser]?.[item.firebase.id]?.[diff.key] ===
-                                                "firebase"
-                                                ? "bg-blue-50 border border-blue-200"
-                                                : "bg-gray-50"
-                                                }`}
-                                            >
-                                              {diff.firebaseValue === undefined
-                                                ? "Not set"
-                                                : typeof diff.firebaseValue === "object"
-                                                  ? JSON.stringify(diff.firebaseValue)
-                                                  : String(diff.firebaseValue)}
-                                            </div>
-                                          </div>
-                                        </div>
-                                        <div className="flex justify-end space-x-2 col-span-3">
-                                          <button
-                                            onClick={() =>
-                                              handleFieldChoice(selectedUser, item.firebase.id, diff.key, "local")
-                                            }
-                                            className={`px-3 py-1 rounded ${!disputedFieldChoices[selectedUser]?.[item.firebase.id]?.[diff.key] ||
-                                              disputedFieldChoices[selectedUser]?.[item.firebase.id]?.[diff.key] ===
-                                              "local"
-                                              ? "bg-blue-500 text-white"
-                                              : "bg-gray-200 text-gray-800"
-                                              }`}
-                                          >
-                                            Keep Local
-                                          </button>
-                                          <button
-                                            onClick={() =>
-                                              handleFieldChoice(selectedUser, item.firebase.id, diff.key, "firebase")
-                                            }
-                                            className={`px-3 py-1 rounded ${disputedFieldChoices[selectedUser]?.[item.firebase.id]?.[diff.key] ===
-                                              "firebase"
-                                              ? "bg-blue-500 text-white"
-                                              : "bg-gray-200 text-gray-800"
-                                              }`}
-                                          >
-                                            Use Firebase
-                                          </button>
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div className="flex justify-end space-x-4">
-                  <button
-                    onClick={() => {
-                      setSyncModalOpen(false)
-                      setSyncData(null)
-                      setSyncResults(null)
-                      setDisputedFieldChoices({})
-                    }}
-                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={applySyncDecisions}
-                    className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-                  >
-                    Apply Changes
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   )
