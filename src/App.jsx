@@ -1892,15 +1892,548 @@
 
 
 
-import { useState, useEffect } from "react";
-import { database, ref, onValue } from "./firebase";
-// import { jsPDF } from "jspdf";
-// import autoTable from "jspdf-autotable";
-// import Chart from "chart.js/auto";
-import { firebaseThreeHelpers } from "./firebase-three";
-// import { uploadToSecondaryFirebase } from "./second-firebase";
+// import { useState, useEffect } from "react";
+// import { database, ref, onValue } from "./firebase";
+// // import { jsPDF } from "jspdf";
+// // import autoTable from "jspdf-autotable";
+// // import Chart from "chart.js/auto";
+// import { firebaseThreeHelpers } from "./firebase-three";
+// // import { uploadToSecondaryFirebase } from "./second-firebase";
 
-const App = () => {
+// const App = () => {
+//   const [farmers, setFarmers] = useState([]);
+//   const [users, setUsers] = useState([]);
+//   const [selectedUser, setSelectedUser] = useState("");
+//   const [selectedFarmer, setSelectedFarmer] = useState(null);
+//   const [searchTerm, setSearchTerm] = useState("");
+//   const [dataLoaded, setDataLoaded] = useState(false);
+
+
+//   useEffect(() => {
+//     const loadInitialData = async () => {
+//       try {
+//         // Try to load data from Firebase Three first
+//         const users = await firebaseThreeHelpers.getUsers();
+//         setUsers(users || []);
+
+//         if (users.length > 0 && !selectedUser) {
+//           setSelectedUser(users[0]);
+//           const userFarmers = await firebaseThreeHelpers.getFarmers(users[0]);
+//           setFarmers(userFarmers || []);
+//         }
+
+//         setDataLoaded(true);
+
+//         // Fetch data from primary Firebase
+//         const usersRef = ref(database);
+//         onValue(usersRef, async (snapshot) => {
+//           const data = snapshot.val();
+//           if (data) {
+//             const userNames = Object.keys(data);
+//             setUsers(userNames);
+
+//             // Save users to Firebase Three
+//             // await firebaseThreeHelpers.saveUsers(userNames);
+
+//             if (!selectedUser && userNames.length > 0) {
+//               setSelectedUser(userNames[0]);
+//             }
+
+//             // Process farmers data for each user
+//             for (const userName of userNames) {
+//               if (data[userName] && data[userName].farmers) {
+//                 const newFarmersArray = Object.keys(data[userName].farmers).map((key) => ({
+//                   id: key,
+//                   ...data[userName].farmers[key],
+//                 }));
+
+//                 // Get existing farmers from Firebase Three
+//                 const existingFarmers = await firebaseThreeHelpers.getFarmers(userName);
+
+//                 let updatedFarmers = [];
+
+//                 if (existingFarmers.length > 0) {
+//                   // Merge existing and new farmers
+//                   updatedFarmers = existingFarmers.map((existingFarmer) => {
+//                     const newEntry = newFarmersArray.find((f) => f.id === existingFarmer.id);
+//                     if (newEntry) {
+//                       return {
+//                         ...existingFarmer,
+//                         verify: mergeArray(existingFarmer.verify, newEntry.verify),
+//                         assessment: mergeArray(existingFarmer.assessment, newEntry.assessment),
+//                         workplan: newEntry.workplan, // Always replace workplan with latest data
+//                       };
+//                     }
+//                     return existingFarmer;
+//                   });
+
+//                   // Add new farmers that don't exist yet
+//                   newFarmersArray.forEach((newFarmer) => {
+//                     if (!updatedFarmers.some((f) => f.id === newFarmer.id)) {
+//                       updatedFarmers.push(newFarmer);
+//                     }
+//                   });
+//                 } else {
+//                   updatedFarmers = newFarmersArray;
+//                 }
+
+//                 // Save updated farmers to Firebase Three
+//                 // await firebaseThreeHelpers.saveFarmers(userName, updatedFarmers);
+
+//                 // Update state if this is the selected user
+//                 if (userName === selectedUser || (!selectedUser && userName === userNames[0])) {
+//                   setFarmers(updatedFarmers);
+//                 }
+//               }
+//             }
+
+//             setDataLoaded(true);
+//           }
+//         });
+//       } catch (error) {
+//         console.error("Error loading initial data:", error);
+//         setDataLoaded(true);
+//       }
+//     };
+
+//     loadInitialData();
+//   }, []);
+
+//   useEffect(() => {
+//     if (!selectedUser || !dataLoaded) return;
+
+//     const loadUserFarmers = async () => {
+//       try {
+//         // Try to get farmers from Firebase Three first
+//         const userFarmers = await firebaseThreeHelpers.getFarmers(selectedUser);
+//         if (userFarmers.length > 0) {
+//           setFarmers(userFarmers);
+//           return;
+//         }
+
+//         // If not in Firebase Three, fetch from primary Firebase
+//         const farmersRef = ref(database, `${selectedUser}/farmers`);
+//         onValue(farmersRef, async (snapshot) => {
+//           const data = snapshot.val();
+//           if (data) {
+//             const farmersArray = Object.keys(data).map((key) => ({
+//               id: key,
+//               ...data[key],
+//             }));
+
+//             setFarmers(farmersArray);
+
+//             // Save to Firebase Three
+//             // await firebaseThreeHelpers.saveFarmers(selectedUser, farmersArray);
+//           } else {
+//             setFarmers([]);
+//           }
+//         });
+//       } catch (error) {
+//         console.error(`Error loading farmers for user ${selectedUser}:`, error);
+//       }
+//     };
+
+//     // Set up a listener for the selected user's farmers in Firebase Three
+//     const unsubscribe = firebaseThreeHelpers.listenToUserFarmers(selectedUser, (farmersData) => {
+//       setFarmers(farmersData);
+//     });
+
+//     loadUserFarmers();
+
+//     // Clean up listener when component unmounts or selectedUser changes
+//     return () => unsubscribe && unsubscribe();
+//   }, [selectedUser, dataLoaded]);
+
+//   const filteredFarmers = farmers.filter(
+//     (farmer) =>
+//       farmer.farmer_name &&
+//       farmer.farmer_name.trim() !== "" &&
+//       (farmer.farmer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+//         farmer.farmer_id?.includes(searchTerm) ||
+//         farmer.nutmeg_card_number?.includes(searchTerm)),
+//   );
+
+//   // Helper function to merge new data while avoiding duplicates
+//   const mergeArray = (existingArray = [], newArray = []) => {
+//     const existingIds = new Set(existingArray.map((item) => item.id));
+//     const mergedArray = [...existingArray];
+
+//     newArray.forEach((newItem) => {
+//       if (!existingIds.has(newItem.id)) {
+//         mergedArray.push(newItem);
+//       }
+//     });
+
+//     return mergedArray;
+//   };
+
+
+
+
+//   return (
+//     <div className="min-h-screen bg-gray-50 p-8">
+//       <div className="max-w-7xl mx-auto">
+//         <div className="flex justify-between items-center mb-8">
+//           <h1 className="text-3xl font-bold text-gray-900">Farmer Assessment Data</h1>
+//           {/* <button
+//             onClick={refreshData}
+//             className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+//           >
+//             Refresh Data
+//           </button> */}
+//           {/* <button
+//             onClick={handleDownloadJSON}
+//             className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors"
+//           >
+//             Download JSON
+//           </button> */}
+//         </div>
+//         <div className="flex justify-between items-center mb-8">
+//           <h1 className="text-3xl font-bold text-gray-50 "> </h1>
+//         </div>
+//         <div className="mb-6">
+//           <label className="underline font-bold">Fields Officer</label>
+//           <select
+//             onChange={(e) => setSelectedUser(e.target.value)}
+//             value={selectedUser}
+//             className="block w-full max-w-xs px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+//           >
+//             {users.map((user) => (
+//               <option key={user} value={user}>
+//                 {user}
+//               </option>
+//             ))}
+//           </select>
+//         </div>
+
+//         <div className="mb-6">
+//           <label className="font-bold">Filter</label>
+//           <input
+//             type="text"
+//             placeholder="Enter name, farmer ID, or card number"
+//             value={searchTerm}
+//             onChange={(e) => setSearchTerm(e.target.value)}
+//             className="block w-full max-w-xs px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+//           />
+//         </div>
+
+//         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+//           <div className="bg-white rounded-lg shadow p-6">
+//             {/* <h2 className="text-xl font-semibold mb-4">Farmers List</h2> */}
+//             <h2 className="text-xl font-semibold">Farmers List</h2>
+//             <span className="text-sm text-gray-500">
+//               {!dataLoaded ? (
+//                 "Loading..."
+//               ) : (
+//                 `${filteredFarmers
+//                   .filter(farmer => !farmer.flagged &&
+//                     !farmer.farmer_name.toLowerCase().includes("flagged"))
+//                   .length} entries`
+//               )}
+//             </span>
+//             {!dataLoaded ? (
+//               <p className="text-gray-500">Loading data...</p>
+//             ) : filteredFarmers.length === 0 ? (
+//               <p className="text-gray-500">No farmers found</p>
+//             ) : (
+//               <ul className="space-y-2">
+//                 {filteredFarmers
+//                   .filter((farmer) => !farmer.flagged &&
+//                     !farmer.farmer_name.toLowerCase().includes("flagged"))
+//                   .sort((a, b) => new Date(a.dateCreated) - new Date(b.dateCreated))
+//                   .map((farmer) => (
+//                     <li
+//                       key={farmer.id}
+//                       onClick={() => setSelectedFarmer(farmer)}
+//                       className={`p-3 rounded-lg cursor-pointer transition-colors ${selectedFarmer?.id === farmer.id ? "bg-blue-50 border border-blue-200" : "hover:bg-gray-50"
+//                         }`}
+//                     >
+//                       <p className="font-medium text-gray-900">{farmer.farmer_name}</p>
+//                       <p className="text-sm text-gray-500">Farmer ID: {farmer.farmer_id}</p>
+//                       <p className="text-sm text-gray-500">Card Number: {farmer.nutmeg_card_number}</p>
+//                     </li>
+//                   ))}
+//               </ul>
+//             )}
+//           </div>
+
+//           {selectedFarmer && !selectedFarmer.flagged && (
+//             <div className="lg:col-span-2">
+//               <div className="bg-white rounded-lg shadow p-6">
+//                 <h2 className="text-2xl font-semibold mb-6">Farmer Details</h2>
+//                 {/* <button onClick={handleFlagFarmer} className="mt-2 text-red-600">
+//                                     Flag Farmer
+//                                 </button> */}
+//                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+//                   <div className="space-y-2">
+//                     <p className="text-gray-600">
+//                       Name: <span className="font-medium text-gray-900">{selectedFarmer.farmer_name}</span>
+//                     </p>
+//                     <p className="text-gray-600">
+//                       ID: <span className="font-medium text-gray-900">{selectedFarmer.farmer_id}</span>
+//                     </p>
+//                     <p className="text-gray-600">
+//                       Nutmeg Card:{" "}
+//                       <span className="font-medium text-gray-900">{selectedFarmer.nutmeg_card_number}</span>
+//                     </p>
+//                   </div>
+//                   <div className="space-y-2">
+//                     <p className="text-gray-600">
+//                       Phone: <span className="font-medium text-gray-900">{selectedFarmer.phone_number}</span>
+//                     </p>
+//                     <p className="text-gray-600">
+//                       Sex: <span className="font-medium text-gray-900">{selectedFarmer.sex}</span>
+//                     </p>
+//                     <p className="text-gray-600">
+//                       Age Range: <span className="font-medium text-gray-900">{selectedFarmer.age}</span>
+//                     </p>
+//                   </div>
+//                 </div>
+
+//                 {selectedFarmer.verify && (
+//                   <div>
+//                     <h3 className="text-xl font-semibold mb-4">Plots</h3>
+//                     <div className="grid gap-4">
+//                       {selectedFarmer.verify
+//                         .filter((v) => !v.flagged)
+//                         .map((v, index) => (
+//                           <div key={index} className="bg-gray-50 rounded-lg p-4">
+//                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+//                               <p className="text-gray-600">
+//                                 Condition: <span className="font-medium text-gray-900">{v.condition}</span>
+//                               </p>
+//                               <p className="text-gray-600">
+//                                 Overall Acreage: <span className="font-medium text-gray-900">{v.overall_acreage}</span>
+//                               </p>
+//                               <p className="text-gray-600">
+//                                 Labour: <span className="font-medium text-gray-900">{v.labour}</span>
+//                               </p>
+//                               <p className="text-gray-600">
+//                                 Shade: <span className="font-medium text-gray-900">{v.shade}</span>
+//                               </p>
+//                               <p className="text-gray-600">
+//                                 Date:{" "}
+//                                 <span className="font-medium text-gray-900">
+//                                   {new Date(v.date ?? Date.now()).toDateString()}
+//                                 </span>
+//                               </p>
+//                               <p className="text-gray-600">
+//                                 Location:{" "}
+//                                 <span className="font-medium text-gray-900">{v.location ?? "Not Available"}</span>
+//                               </p>
+//                               <p className="text-gray-600">
+//                                 Acreage Rehabilitated:{" "}
+//                                 <span className="font-medium text-gray-900">
+//                                   {v.acreage_rehabilitated ?? "Not Available"}
+//                                 </span>
+//                               </p>
+//                               <p className="text-gray-600">
+//                                 Tenure:{" "}
+//                                 <span className="font-medium text-gray-900">{v.newtenure ?? "Not Available"}</span>
+//                               </p>
+
+//                               {/* <button onClick={() => handleFlagVerify(index)} className="mt-2 text-red-600">
+//                                                                 Flag Plot
+//                                                             </button> */}
+//                             </div>
+//                           </div>
+//                         ))}
+//                     </div>
+//                   </div>
+//                 )}
+
+//                 <div className="space-y-8">
+//                   {selectedFarmer.assessment && (
+//                     <div>
+//                       <h3 className="text-xl font-semibold mb-4">Assessments</h3>
+//                       <div className="grid gap-4">
+//                         {selectedFarmer.assessment
+//                           .filter((a) => !a.flagged)
+//                           .map((a, index) => (
+//                             <div key={index} className="bg-gray-50 rounded-lg p-4">
+//                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+//                                 <p className="text-gray-600">
+//                                   Plot: <span className="font-medium text-gray-900">{a.plot_num}</span>
+//                                 </p>
+//                                 <p className="text-gray-600">
+//                                   Production 2023:{" "}
+//                                   <span className="font-medium text-gray-900">{a.production_2023}</span>
+//                                 </p>
+//                                 <p className="text-gray-600">
+//                                   Drainage: <span className="font-medium text-gray-900">{a.drainage}</span>
+//                                 </p>
+//                                 <p className="text-gray-600">
+//                                   Spices: <span className="font-medium text-gray-900">{a.spices}</span>
+//                                 </p>
+
+//                                 <p className="text-gray-600">
+//                                   Nutmeg Card Number:{" "}
+//                                   <span className="font-medium text-gray-900">{a.nutmeg_card_number}</span>
+//                                 </p>
+
+//                                 <p className="text-gray-600">
+//                                   Land Clearing Remarks:{" "}
+//                                   <span className="font-medium text-gray-900">{a.land_clearing}</span>
+//                                 </p>
+
+//                                 <p className="text-gray-600">
+//                                   Drainage Remarks: <span className="font-medium text-gray-900">{a.drainage}</span>
+//                                 </p>
+
+//                                 <p className="text-gray-600">
+//                                   Shade Crops Remarks:{" "}
+//                                   <span className="font-medium text-gray-900">{a.shade_crops}</span>
+//                                 </p>
+
+//                                 <p className="text-gray-600">
+//                                   Spices Remarks: <span className="font-medium text-gray-900">{a.spices}</span>
+//                                 </p>
+
+//                                 <p className="text-gray-600">
+//                                   Fertilizing Remarks:{" "}
+//                                   <span className="font-medium text-gray-900">{a.fertilizing}</span>
+//                                 </p>
+
+//                                 <p className="text-gray-600">
+//                                   Comments: <span className="font-medium text-gray-900">{a.comments}</span>
+//                                 </p>
+
+//                                 {/* <button onClick={() => handleFlagAssessment(index)} className="mt-2 text-red-600">
+//                                                                     Flag Assessment
+//                                                                 </button> */}
+//                               </div>
+//                             </div>
+//                           ))}
+//                       </div>
+//                     </div>
+//                   )}
+
+//                   {selectedFarmer.workplan && (
+//                     <div>
+//                       <h3 className="text-xl font-semibold mb-4">Workplans</h3>
+//                       <div className="grid gap-4">
+//                         {selectedFarmer.workplan
+//                           .filter((w) => !w.flagged)
+//                           .map((w, index) => (
+//                             <div key={index} className="bg-gray-50 rounded-lg p-4">
+//                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+//                                 <p className="text-gray-600">
+//                                   Work Plan: <span className="font-medium text-gray-900">{w.work_plan}</span>
+//                                 </p>
+//                                 <p className="text-gray-600">
+//                                   Base Crop: <span className="font-medium text-gray-900">{w.base_crop}</span>
+//                                 </p>
+//                                 <p className="text-gray-600">
+//                                   Farmer Date: <span className="font-medium text-gray-900">{w.farmer_date}</span>
+//                                 </p>
+//                                 <p className="text-gray-600">
+//                                   Officer Date: <span className="font-medium text-gray-900">{w.officer_date}</span>
+//                                 </p>
+//                               </div>
+
+//                               {w && w.activities ? (
+//                                 (() => {
+//                                   let activities
+//                                   try {
+//                                     activities = JSON.parse(w.activities)
+//                                   } catch (error) {
+//                                     console.error("Failed to parse activities:", error)
+//                                     return <p>Invalid activities data</p>
+//                                   }
+
+//                                   return (
+//                                     <div>
+//                                       <h4 className="text-lg font-medium mb-2">Activities</h4>
+//                                       <div className="overflow-x-auto">
+//                                         <table className="table-auto border-collapse border border-gray-300 w-full text-left">
+//                                           <thead>
+//                                             <tr className="bg-gray-100">
+//                                               <th className="border border-gray-300 px-4 py-2">Activity</th>
+//                                               <th className="border border-gray-300 px-4 py-2">Man Days</th>
+//                                               <th className="border border-gray-300 px-4 py-2">Weeks</th>
+//                                             </tr>
+//                                           </thead>
+//                                           <tbody>
+//                                             {Object.entries(activities).map(([activity, details], activityIndex) => (
+//                                               <tr key={activityIndex} className="even:bg-gray-50">
+//                                                 <td className="border border-gray-300 px-4 py-2">{activity}</td>
+//                                                 <td className="border border-gray-300 px-4 py-2">
+//                                                   {details.manDays || "N/A"}
+//                                                 </td>
+//                                                 <td className="border border-gray-300 px-4 py-2">
+//                                                   <div className="flex space-x-2">
+//                                                     {details.weeks.map((isActive, weekIndex) => (
+//                                                       <div
+//                                                         key={weekIndex}
+//                                                         className={`w-6 h-6 rounded-md flex items-center justify-center text-xs font-semibold ${isActive
+//                                                           ? "bg-green-500 text-white"
+//                                                           : "bg-gray-300 text-gray-600"
+//                                                           }`}
+//                                                       >
+//                                                         {weekIndex + 1}
+//                                                       </div>
+//                                                     ))}
+//                                                   </div>
+//                                                 </td>
+//                                               </tr>
+//                                             ))}
+//                                           </tbody>
+//                                         </table>
+//                                       </div>
+//                                     </div>
+//                                   )
+//                                 })()
+//                               ) : (
+//                                 <p>No activities available</p>
+//                               )}
+
+//                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+//                                 {w.farmer_signature && (
+//                                   <div>
+//                                     <p className="text-sm text-gray-500 mb-2">Farmer Signature</p>
+//                                     <img
+//                                       src={w.farmer_signature || "/placeholder.svg"}
+//                                       alt="Farmer Signature"
+//                                       className="max-w-[200px] border rounded p-2"
+//                                     />
+//                                   </div>
+//                                 )}
+//                                 {w.officer_signature && (
+//                                   <div>
+//                                     <p className="text-sm text-gray-500 mb-2">Officer Signature</p>
+//                                     <img
+//                                       src={w.officer_signature || "/placeholder.svg"}
+//                                       alt="Officer Signature"
+//                                       className="max-w-[200px] border rounded p-2"
+//                                     />
+//                                   </div>
+//                                 )}
+//                                 {/* <button onClick={() => handleFlagWorkplan(index)} className="mt-2 text-red-600">
+//                                                                     Flag Workplan
+//                                                                 </button> */}
+//                               </div>
+//                             </div>
+//                           ))}
+//                       </div>
+//                     </div>
+//                   )}
+//                 </div>
+//               </div>
+//             </div>
+//           )}
+//         </div>
+
+//       </div>
+//     </div>
+//   )
+// }
+
+// export default App
+import React, { useState, useEffect } from "react";
+import { database, ref, onValue } from "./firebase";
+
+function App() {
   const [farmers, setFarmers] = useState([]);
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState("");
@@ -1908,190 +2441,55 @@ const App = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [dataLoaded, setDataLoaded] = useState(false);
 
-
   useEffect(() => {
-    const loadInitialData = async () => {
-      try {
-        // Try to load data from Firebase Three first
-        const users = await firebaseThreeHelpers.getUsers();
-        setUsers(users || []);
-
-        if (users.length > 0 && !selectedUser) {
-          setSelectedUser(users[0]);
-          const userFarmers = await firebaseThreeHelpers.getFarmers(users[0]);
-          setFarmers(userFarmers || []);
+    const usersRef = ref(database);
+    onValue(usersRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const userNames = Object.keys(data);
+        setUsers(userNames);
+        if (!selectedUser && userNames.length > 0) {
+          setSelectedUser(userNames[0]);
         }
-
-        setDataLoaded(true);
-
-        // Fetch data from primary Firebase
-        const usersRef = ref(database);
-        onValue(usersRef, async (snapshot) => {
-          const data = snapshot.val();
-          if (data) {
-            const userNames = Object.keys(data);
-            setUsers(userNames);
-
-            // Save users to Firebase Three
-            // await firebaseThreeHelpers.saveUsers(userNames);
-
-            if (!selectedUser && userNames.length > 0) {
-              setSelectedUser(userNames[0]);
-            }
-
-            // Process farmers data for each user
-            for (const userName of userNames) {
-              if (data[userName] && data[userName].farmers) {
-                const newFarmersArray = Object.keys(data[userName].farmers).map((key) => ({
-                  id: key,
-                  ...data[userName].farmers[key],
-                }));
-
-                // Get existing farmers from Firebase Three
-                const existingFarmers = await firebaseThreeHelpers.getFarmers(userName);
-
-                let updatedFarmers = [];
-
-                if (existingFarmers.length > 0) {
-                  // Merge existing and new farmers
-                  updatedFarmers = existingFarmers.map((existingFarmer) => {
-                    const newEntry = newFarmersArray.find((f) => f.id === existingFarmer.id);
-                    if (newEntry) {
-                      return {
-                        ...existingFarmer,
-                        verify: mergeArray(existingFarmer.verify, newEntry.verify),
-                        assessment: mergeArray(existingFarmer.assessment, newEntry.assessment),
-                        workplan: newEntry.workplan, // Always replace workplan with latest data
-                      };
-                    }
-                    return existingFarmer;
-                  });
-
-                  // Add new farmers that don't exist yet
-                  newFarmersArray.forEach((newFarmer) => {
-                    if (!updatedFarmers.some((f) => f.id === newFarmer.id)) {
-                      updatedFarmers.push(newFarmer);
-                    }
-                  });
-                } else {
-                  updatedFarmers = newFarmersArray;
-                }
-
-                // Save updated farmers to Firebase Three
-                // await firebaseThreeHelpers.saveFarmers(userName, updatedFarmers);
-
-                // Update state if this is the selected user
-                if (userName === selectedUser || (!selectedUser && userName === userNames[0])) {
-                  setFarmers(updatedFarmers);
-                }
-              }
-            }
-
-            setDataLoaded(true);
-          }
-        });
-      } catch (error) {
-        console.error("Error loading initial data:", error);
-        setDataLoaded(true);
       }
-    };
-
-    loadInitialData();
+    });
   }, []);
 
   useEffect(() => {
-    if (!selectedUser || !dataLoaded) return;
+    if (!selectedUser) return;
+    const farmersRef = ref(database, `${selectedUser}/farmers`);
 
-    const loadUserFarmers = async () => {
-      try {
-        // Try to get farmers from Firebase Three first
-        const userFarmers = await firebaseThreeHelpers.getFarmers(selectedUser);
-        if (userFarmers.length > 0) {
-          setFarmers(userFarmers);
-          return;
-        }
-
-        // If not in Firebase Three, fetch from primary Firebase
-        const farmersRef = ref(database, `${selectedUser}/farmers`);
-        onValue(farmersRef, async (snapshot) => {
-          const data = snapshot.val();
-          if (data) {
-            const farmersArray = Object.keys(data).map((key) => ({
-              id: key,
-              ...data[key],
-            }));
-
-            setFarmers(farmersArray);
-
-            // Save to Firebase Three
-            // await firebaseThreeHelpers.saveFarmers(selectedUser, farmersArray);
-          } else {
-            setFarmers([]);
-          }
-        });
-      } catch (error) {
-        console.error(`Error loading farmers for user ${selectedUser}:`, error);
+    onValue(farmersRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const farmersArray = Object.keys(data).map((key) => ({
+          id: key,
+          ...data[key],
+        }));
+        setFarmers(farmersArray);
+      } else {
+        setFarmers([]);
       }
-    };
-
-    // Set up a listener for the selected user's farmers in Firebase Three
-    const unsubscribe = firebaseThreeHelpers.listenToUserFarmers(selectedUser, (farmersData) => {
-      setFarmers(farmersData);
+      setDataLoaded(true);
     });
-
-    loadUserFarmers();
-
-    // Clean up listener when component unmounts or selectedUser changes
-    return () => unsubscribe && unsubscribe();
-  }, [selectedUser, dataLoaded]);
+  }, [selectedUser]);
 
   const filteredFarmers = farmers.filter(
     (farmer) =>
       farmer.farmer_name &&
       farmer.farmer_name.trim() !== "" &&
+      !farmer.flagged &&
+      !farmer.farmer_name.toLowerCase().includes("flagged") &&
       (farmer.farmer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         farmer.farmer_id?.includes(searchTerm) ||
-        farmer.nutmeg_card_number?.includes(searchTerm)),
+        farmer.nutmeg_card_number?.includes(searchTerm))
   );
-
-  // Helper function to merge new data while avoiding duplicates
-  const mergeArray = (existingArray = [], newArray = []) => {
-    const existingIds = new Set(existingArray.map((item) => item.id));
-    const mergedArray = [...existingArray];
-
-    newArray.forEach((newItem) => {
-      if (!existingIds.has(newItem.id)) {
-        mergedArray.push(newItem);
-      }
-    });
-
-    return mergedArray;
-  };
-
-
-
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Farmer Assessment Data</h1>
-          {/* <button
-            onClick={refreshData}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-          >
-            Refresh Data
-          </button> */}
-          {/* <button
-            onClick={handleDownloadJSON}
-            className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors"
-          >
-            Download JSON
-          </button> */}
-        </div>
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-50 "> </h1>
-        </div>
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">Farmer Assessment Data</h1>
+
         <div className="mb-6">
           <label className="underline font-bold">Fields Officer</label>
           <select
@@ -2100,9 +2498,7 @@ const App = () => {
             className="block w-full max-w-xs px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             {users.map((user) => (
-              <option key={user} value={user}>
-                {user}
-              </option>
+              <option key={user} value={user}>{user}</option>
             ))}
           </select>
         </div>
@@ -2120,74 +2516,45 @@ const App = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="bg-white rounded-lg shadow p-6">
-            {/* <h2 className="text-xl font-semibold mb-4">Farmers List</h2> */}
             <h2 className="text-xl font-semibold">Farmers List</h2>
             <span className="text-sm text-gray-500">
-              {!dataLoaded ? (
-                "Loading..."
-              ) : (
-                `${filteredFarmers
-                  .filter(farmer => !farmer.flagged &&
-                    !farmer.farmer_name.toLowerCase().includes("flagged"))
-                  .length} entries`
-              )}
+              {!dataLoaded ? "Loading..." : `${filteredFarmers.length} entries`}
             </span>
-            {!dataLoaded ? (
-              <p className="text-gray-500">Loading data...</p>
-            ) : filteredFarmers.length === 0 ? (
-              <p className="text-gray-500">No farmers found</p>
-            ) : (
-              <ul className="space-y-2">
-                {filteredFarmers
-                  .filter((farmer) => !farmer.flagged &&
-                    !farmer.farmer_name.toLowerCase().includes("flagged"))
-                  .sort((a, b) => new Date(a.dateCreated) - new Date(b.dateCreated))
-                  .map((farmer) => (
-                    <li
-                      key={farmer.id}
-                      onClick={() => setSelectedFarmer(farmer)}
-                      className={`p-3 rounded-lg cursor-pointer transition-colors ${selectedFarmer?.id === farmer.id ? "bg-blue-50 border border-blue-200" : "hover:bg-gray-50"
-                        }`}
-                    >
-                      <p className="font-medium text-gray-900">{farmer.farmer_name}</p>
-                      <p className="text-sm text-gray-500">Farmer ID: {farmer.farmer_id}</p>
-                      <p className="text-sm text-gray-500">Card Number: {farmer.nutmeg_card_number}</p>
-                    </li>
-                  ))}
-              </ul>
-            )}
+            <ul className="space-y-2">
+              {filteredFarmers
+                .sort((a, b) => new Date(a.dateCreated) - new Date(b.dateCreated))
+                .map((farmer) => (
+                  <li
+                    key={farmer.id}
+                    onClick={() => setSelectedFarmer(farmer)}
+                    className={`p-3 rounded-lg cursor-pointer transition-colors ${selectedFarmer?.id === farmer.id
+                      ? "bg-blue-50 border border-blue-200"
+                      : "hover:bg-gray-50"
+                      }`}
+                  >
+                    <p className="font-medium text-gray-900">{farmer.farmer_name}</p>
+                    <p className="text-sm text-gray-500">Farmer ID: {farmer.farmer_id}</p>
+                    <p className="text-sm text-gray-500">Card Number: {farmer.nutmeg_card_number}</p>
+                  </li>
+                ))}
+            </ul>
           </div>
 
           {selectedFarmer && !selectedFarmer.flagged && (
             <div className="lg:col-span-2">
               <div className="bg-white rounded-lg shadow p-6">
                 <h2 className="text-2xl font-semibold mb-6">Farmer Details</h2>
-                {/* <button onClick={handleFlagFarmer} className="mt-2 text-red-600">
-                                    Flag Farmer
-                                </button> */}
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                   <div className="space-y-2">
-                    <p className="text-gray-600">
-                      Name: <span className="font-medium text-gray-900">{selectedFarmer.farmer_name}</span>
-                    </p>
-                    <p className="text-gray-600">
-                      ID: <span className="font-medium text-gray-900">{selectedFarmer.farmer_id}</span>
-                    </p>
-                    <p className="text-gray-600">
-                      Nutmeg Card:{" "}
-                      <span className="font-medium text-gray-900">{selectedFarmer.nutmeg_card_number}</span>
-                    </p>
+                    <p className="text-gray-600">Name: <span className="font-medium text-gray-900">{selectedFarmer.farmer_name}</span></p>
+                    <p className="text-gray-600">ID: <span className="font-medium text-gray-900">{selectedFarmer.farmer_id}</span></p>
+                    <p className="text-gray-600">Nutmeg Card: <span className="font-medium text-gray-900">{selectedFarmer.nutmeg_card_number}</span></p>
                   </div>
                   <div className="space-y-2">
-                    <p className="text-gray-600">
-                      Phone: <span className="font-medium text-gray-900">{selectedFarmer.phone_number}</span>
-                    </p>
-                    <p className="text-gray-600">
-                      Sex: <span className="font-medium text-gray-900">{selectedFarmer.sex}</span>
-                    </p>
-                    <p className="text-gray-600">
-                      Age Range: <span className="font-medium text-gray-900">{selectedFarmer.age}</span>
-                    </p>
+                    <p className="text-gray-600">Phone: <span className="font-medium text-gray-900">{selectedFarmer.phone_number}</span></p>
+                    <p className="text-gray-600">Sex: <span className="font-medium text-gray-900">{selectedFarmer.sex}</span></p>
+                    <p className="text-gray-600">Age Range: <span className="font-medium text-gray-900">{selectedFarmer.age}</span></p>
                   </div>
                 </div>
 
@@ -2196,46 +2563,18 @@ const App = () => {
                     <h3 className="text-xl font-semibold mb-4">Plots</h3>
                     <div className="grid gap-4">
                       {selectedFarmer.verify
-                        .filter((v) => !v.flagged)
+                        .filter(v => !v.flagged)
                         .map((v, index) => (
                           <div key={index} className="bg-gray-50 rounded-lg p-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <p className="text-gray-600">
-                                Condition: <span className="font-medium text-gray-900">{v.condition}</span>
-                              </p>
-                              <p className="text-gray-600">
-                                Overall Acreage: <span className="font-medium text-gray-900">{v.overall_acreage}</span>
-                              </p>
-                              <p className="text-gray-600">
-                                Labour: <span className="font-medium text-gray-900">{v.labour}</span>
-                              </p>
-                              <p className="text-gray-600">
-                                Shade: <span className="font-medium text-gray-900">{v.shade}</span>
-                              </p>
-                              <p className="text-gray-600">
-                                Date:{" "}
-                                <span className="font-medium text-gray-900">
-                                  {new Date(v.date ?? Date.now()).toDateString()}
-                                </span>
-                              </p>
-                              <p className="text-gray-600">
-                                Location:{" "}
-                                <span className="font-medium text-gray-900">{v.location ?? "Not Available"}</span>
-                              </p>
-                              <p className="text-gray-600">
-                                Acreage Rehabilitated:{" "}
-                                <span className="font-medium text-gray-900">
-                                  {v.acreage_rehabilitated ?? "Not Available"}
-                                </span>
-                              </p>
-                              <p className="text-gray-600">
-                                Tenure:{" "}
-                                <span className="font-medium text-gray-900">{v.newtenure ?? "Not Available"}</span>
-                              </p>
-
-                              {/* <button onClick={() => handleFlagVerify(index)} className="mt-2 text-red-600">
-                                                                Flag Plot
-                                                            </button> */}
+                              <p className="text-gray-600">Condition: <span className="font-medium text-gray-900">{v.condition}</span></p>
+                              <p className="text-gray-600">Overall Acreage: <span className="font-medium text-gray-900">{v.overall_acreage}</span></p>
+                              <p className="text-gray-600">Labour: <span className="font-medium text-gray-900">{v.labour}</span></p>
+                              <p className="text-gray-600">Shade: <span className="font-medium text-gray-900">{v.shade}</span></p>
+                              <p className="text-gray-600">Date: <span className="font-medium text-gray-900">{new Date(v.date ?? Date.now()).toDateString()}</span></p>
+                              <p className="text-gray-600">Location: <span className="font-medium text-gray-900">{v.location ?? "Not Available"}</span></p>
+                              <p className="text-gray-600">Acreage Rehabilitated: <span className="font-medium text-gray-900">{v.acreage_rehabilitated ?? "Not Available"}</span></p>
+                              <p className="text-gray-600">Tenure: <span className="font-medium text-gray-900">{v.newtenure ?? "Not Available"}</span></p>
                             </div>
                           </div>
                         ))}
@@ -2243,191 +2582,125 @@ const App = () => {
                   </div>
                 )}
 
-                <div className="space-y-8">
-                  {selectedFarmer.assessment && (
-                    <div>
-                      <h3 className="text-xl font-semibold mb-4">Assessments</h3>
-                      <div className="grid gap-4">
-                        {selectedFarmer.assessment
-                          .filter((a) => !a.flagged)
-                          .map((a, index) => (
-                            <div key={index} className="bg-gray-50 rounded-lg p-4">
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <p className="text-gray-600">
-                                  Plot: <span className="font-medium text-gray-900">{a.plot_num}</span>
-                                </p>
-                                <p className="text-gray-600">
-                                  Production 2023:{" "}
-                                  <span className="font-medium text-gray-900">{a.production_2023}</span>
-                                </p>
-                                <p className="text-gray-600">
-                                  Drainage: <span className="font-medium text-gray-900">{a.drainage}</span>
-                                </p>
-                                <p className="text-gray-600">
-                                  Spices: <span className="font-medium text-gray-900">{a.spices}</span>
-                                </p>
-
-                                <p className="text-gray-600">
-                                  Nutmeg Card Number:{" "}
-                                  <span className="font-medium text-gray-900">{a.nutmeg_card_number}</span>
-                                </p>
-
-                                <p className="text-gray-600">
-                                  Land Clearing Remarks:{" "}
-                                  <span className="font-medium text-gray-900">{a.land_clearing}</span>
-                                </p>
-
-                                <p className="text-gray-600">
-                                  Drainage Remarks: <span className="font-medium text-gray-900">{a.drainage}</span>
-                                </p>
-
-                                <p className="text-gray-600">
-                                  Shade Crops Remarks:{" "}
-                                  <span className="font-medium text-gray-900">{a.shade_crops}</span>
-                                </p>
-
-                                <p className="text-gray-600">
-                                  Spices Remarks: <span className="font-medium text-gray-900">{a.spices}</span>
-                                </p>
-
-                                <p className="text-gray-600">
-                                  Fertilizing Remarks:{" "}
-                                  <span className="font-medium text-gray-900">{a.fertilizing}</span>
-                                </p>
-
-                                <p className="text-gray-600">
-                                  Comments: <span className="font-medium text-gray-900">{a.comments}</span>
-                                </p>
-
-                                {/* <button onClick={() => handleFlagAssessment(index)} className="mt-2 text-red-600">
-                                                                    Flag Assessment
-                                                                </button> */}
-                              </div>
+                {selectedFarmer.assessment && (
+                  <div className="mt-8">
+                    <h3 className="text-xl font-semibold mb-4">Assessments</h3>
+                    <div className="grid gap-4">
+                      {selectedFarmer.assessment
+                        .filter(a => !a.flagged)
+                        .map((a, index) => (
+                          <div key={index} className="bg-gray-50 rounded-lg p-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <p className="text-gray-600">Plot: <span className="font-medium text-gray-900">{a.plot_num}</span></p>
+                              <p className="text-gray-600">Production 2023: <span className="font-medium text-gray-900">{a.production_2023}</span></p>
+                              <p className="text-gray-600">Drainage: <span className="font-medium text-gray-900">{a.drainage}</span></p>
+                              <p className="text-gray-600">Spices: <span className="font-medium text-gray-900">{a.spices}</span></p>
+                              <p className="text-gray-600">Nutmeg Card Number: <span className="font-medium text-gray-900">{a.nutmeg_card_number}</span></p>
+                              <p className="text-gray-600">Land Clearing Remarks: <span className="font-medium text-gray-900">{a.land_clearing}</span></p>
+                              <p className="text-gray-600">Drainage Remarks: <span className="font-medium text-gray-900">{a.drainage}</span></p>
+                              <p className="text-gray-600">Shade Crops Remarks: <span className="font-medium text-gray-900">{a.shade_crops}</span></p>
+                              <p className="text-gray-600">Spices Remarks: <span className="font-medium text-gray-900">{a.spices}</span></p>
+                              <p className="text-gray-600">Fertilizing Remarks: <span className="font-medium text-gray-900">{a.fertilizing}</span></p>
+                              <p className="text-gray-600">Comments: <span className="font-medium text-gray-900">{a.comments}</span></p>
                             </div>
-                          ))}
-                      </div>
+                          </div>
+                        ))}
                     </div>
-                  )}
+                  </div>
+                )}
 
-                  {selectedFarmer.workplan && (
-                    <div>
-                      <h3 className="text-xl font-semibold mb-4">Workplans</h3>
-                      <div className="grid gap-4">
-                        {selectedFarmer.workplan
-                          .filter((w) => !w.flagged)
-                          .map((w, index) => (
-                            <div key={index} className="bg-gray-50 rounded-lg p-4">
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                <p className="text-gray-600">
-                                  Work Plan: <span className="font-medium text-gray-900">{w.work_plan}</span>
-                                </p>
-                                <p className="text-gray-600">
-                                  Base Crop: <span className="font-medium text-gray-900">{w.base_crop}</span>
-                                </p>
-                                <p className="text-gray-600">
-                                  Farmer Date: <span className="font-medium text-gray-900">{w.farmer_date}</span>
-                                </p>
-                                <p className="text-gray-600">
-                                  Officer Date: <span className="font-medium text-gray-900">{w.officer_date}</span>
-                                </p>
-                              </div>
+                {selectedFarmer.workplan && (
+                  <div className="mt-8">
+                    <h3 className="text-xl font-semibold mb-4">Workplans</h3>
+                    <div className="grid gap-4">
+                      {selectedFarmer.workplan
+                        .filter(w => !w.flagged)
+                        .map((w, index) => (
+                          <div key={index} className="bg-gray-50 rounded-lg p-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                              <p className="text-gray-600">Work Plan: <span className="font-medium text-gray-900">{w.work_plan}</span></p>
+                              <p className="text-gray-600">Base Crop: <span className="font-medium text-gray-900">{w.base_crop}</span></p>
+                              <p className="text-gray-600">Farmer Date: <span className="font-medium text-gray-900">{w.farmer_date}</span></p>
+                              <p className="text-gray-600">Officer Date: <span className="font-medium text-gray-900">{w.officer_date}</span></p>
+                            </div>
 
-                              {w && w.activities ? (
-                                (() => {
-                                  let activities
-                                  try {
-                                    activities = JSON.parse(w.activities)
-                                  } catch (error) {
-                                    console.error("Failed to parse activities:", error)
-                                    return <p>Invalid activities data</p>
-                                  }
+                            {w.activities && (
+                              (() => {
+                                let activities;
+                                try {
+                                  activities = JSON.parse(w.activities);
+                                } catch (error) {
+                                  return <p>Invalid activities data</p>;
+                                }
 
-                                  return (
-                                    <div>
-                                      <h4 className="text-lg font-medium mb-2">Activities</h4>
-                                      <div className="overflow-x-auto">
-                                        <table className="table-auto border-collapse border border-gray-300 w-full text-left">
-                                          <thead>
-                                            <tr className="bg-gray-100">
-                                              <th className="border border-gray-300 px-4 py-2">Activity</th>
-                                              <th className="border border-gray-300 px-4 py-2">Man Days</th>
-                                              <th className="border border-gray-300 px-4 py-2">Weeks</th>
+                                return (
+                                  <div>
+                                    <h4 className="text-lg font-medium mb-2">Activities</h4>
+                                    <div className="overflow-x-auto">
+                                      <table className="table-auto border-collapse border border-gray-300 w-full text-left">
+                                        <thead>
+                                          <tr className="bg-gray-100">
+                                            <th className="border border-gray-300 px-4 py-2">Activity</th>
+                                            <th className="border border-gray-300 px-4 py-2">Man Days</th>
+                                            <th className="border border-gray-300 px-4 py-2">Weeks</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {Object.entries(activities).map(([activity, details], activityIndex) => (
+                                            <tr key={activityIndex} className="even:bg-gray-50">
+                                              <td className="border border-gray-300 px-4 py-2">{activity}</td>
+                                              <td className="border border-gray-300 px-4 py-2">{details.manDays || "N/A"}</td>
+                                              <td className="border border-gray-300 px-4 py-2">
+                                                <div className="flex space-x-2">
+                                                  {details.weeks.map((isActive, weekIndex) => (
+                                                    <div
+                                                      key={weekIndex}
+                                                      className={`w-6 h-6 rounded-md flex items-center justify-center text-xs font-semibold ${isActive ? "bg-green-500 text-white" : "bg-gray-300 text-gray-600"
+                                                        }`}
+                                                    >
+                                                      {weekIndex + 1}
+                                                    </div>
+                                                  ))}
+                                                </div>
+                                              </td>
                                             </tr>
-                                          </thead>
-                                          <tbody>
-                                            {Object.entries(activities).map(([activity, details], activityIndex) => (
-                                              <tr key={activityIndex} className="even:bg-gray-50">
-                                                <td className="border border-gray-300 px-4 py-2">{activity}</td>
-                                                <td className="border border-gray-300 px-4 py-2">
-                                                  {details.manDays || "N/A"}
-                                                </td>
-                                                <td className="border border-gray-300 px-4 py-2">
-                                                  <div className="flex space-x-2">
-                                                    {details.weeks.map((isActive, weekIndex) => (
-                                                      <div
-                                                        key={weekIndex}
-                                                        className={`w-6 h-6 rounded-md flex items-center justify-center text-xs font-semibold ${isActive
-                                                          ? "bg-green-500 text-white"
-                                                          : "bg-gray-300 text-gray-600"
-                                                          }`}
-                                                      >
-                                                        {weekIndex + 1}
-                                                      </div>
-                                                    ))}
-                                                  </div>
-                                                </td>
-                                              </tr>
-                                            ))}
-                                          </tbody>
-                                        </table>
-                                      </div>
+                                          ))}
+                                        </tbody>
+                                      </table>
                                     </div>
-                                  )
-                                })()
-                              ) : (
-                                <p>No activities available</p>
-                              )}
+                                  </div>
+                                );
+                              })()
+                            )}
 
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {(w.farmer_signature || w.officer_signature) && (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                                 {w.farmer_signature && (
                                   <div>
                                     <p className="text-sm text-gray-500 mb-2">Farmer Signature</p>
-                                    <img
-                                      src={w.farmer_signature || "/placeholder.svg"}
-                                      alt="Farmer Signature"
-                                      className="max-w-[200px] border rounded p-2"
-                                    />
+                                    <img src={w.farmer_signature} alt="Farmer Signature" className="max-w-[200px] border rounded p-2" />
                                   </div>
                                 )}
                                 {w.officer_signature && (
                                   <div>
                                     <p className="text-sm text-gray-500 mb-2">Officer Signature</p>
-                                    <img
-                                      src={w.officer_signature || "/placeholder.svg"}
-                                      alt="Officer Signature"
-                                      className="max-w-[200px] border rounded p-2"
-                                    />
+                                    <img src={w.officer_signature} alt="Officer Signature" className="max-w-[200px] border rounded p-2" />
                                   </div>
                                 )}
-                                {/* <button onClick={() => handleFlagWorkplan(index)} className="mt-2 text-red-600">
-                                                                    Flag Workplan
-                                                                </button> */}
                               </div>
-                            </div>
-                          ))}
-                      </div>
+                            )}
+                          </div>
+                        ))}
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
         </div>
-
       </div>
     </div>
-  )
+  );
 }
 
-export default App
-
+export default App;
