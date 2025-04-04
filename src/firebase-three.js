@@ -20,13 +20,13 @@ const database = getDatabase(app);
 // Helper functions for Firebase operations
 const firebaseThreeHelpers = {
     async saveUsers(users) {
-        try {
-            await set(ref(database, 'users'), users);
-            return true;
-        } catch (error) {
-            console.error("Error saving users to Firebase:", error);
-            return false;
-        }
+        // try {
+        //     await set(ref(database, 'users'), users);
+        //     return true;
+        // } catch (error) {
+        //     console.error("Error saving users to Firebase:", error);
+        //     return false;
+        // }
     },
 
     async getUsers() {
@@ -76,54 +76,54 @@ const firebaseThreeHelpers = {
     //     }
     // },
     async saveFarmers(user, farmers) {
-        try {
-            // Create an object to store farmers with sanitized keys
-            const farmerData = {};
+        // try {
+        //     // Create an object to store farmers with sanitized keys
+        //     const farmerData = {};
 
-            // Process each farmer
-            for (const farmer of farmers) {
-                const { id, farmer_name, workplan, ...otherData } = farmer;
+        //     // Process each farmer
+        //     for (const farmer of farmers) {
+        //         const { id, farmer_name, workplan, ...otherData } = farmer;
 
-                // Sanitize key for Firebase
-                const sanitizedKey = `${farmer_name} ${id}`
-                    .replace(/\./g, '_')
-                    .replace(/\#/g, '_')
-                    .replace(/\$/g, '_')
-                    .replace(/\//g, '_')
-                    .replace(/\[/g, '_')
-                    .replace(/\]/g, '_');
+        //         // Sanitize key for Firebase
+        //         const sanitizedKey = `${farmer_name} ${id}`
+        //             .replace(/\./g, '_')
+        //             .replace(/\#/g, '_')
+        //             .replace(/\$/g, '_')
+        //             .replace(/\//g, '_')
+        //             .replace(/\[/g, '_')
+        //             .replace(/\]/g, '_');
 
-                // Create a clean farmer object without undefined values
-                const cleanFarmer = {
-                    id,
-                    farmer_name,
-                    workplan: workplan || null, // Replace undefined with null
-                    ...otherData
-                };
+        //         // Create a clean farmer object without undefined values
+        //         const cleanFarmer = {
+        //             id,
+        //             farmer_name,
+        //             workplan: workplan || null, // Replace undefined with null
+        //             ...otherData
+        //         };
 
-                // Remove any remaining undefined values
-                Object.keys(cleanFarmer).forEach(key => {
-                    if (cleanFarmer[key] === undefined) {
-                        cleanFarmer[key] = null;
-                    }
-                });
+        //         // Remove any remaining undefined values
+        //         Object.keys(cleanFarmer).forEach(key => {
+        //             if (cleanFarmer[key] === undefined) {
+        //                 cleanFarmer[key] = null;
+        //             }
+        //         });
 
-                // Add to farmers data
-                farmerData[sanitizedKey] = cleanFarmer;
-            }
+        //         // Add to farmers data
+        //         farmerData[sanitizedKey] = cleanFarmer;
+        //     }
 
-            // Create updates object for batch update
-            const updates = {
-                [`${user}/farmers`]: farmerData
-            };
+        //     // Create updates object for batch update
+        //     const updates = {
+        //         [`${user}/farmers`]: farmerData
+        //     };
 
-            // Update Firebase with all farmers at once
-            await update(ref(database), updates);
-            return true;
-        } catch (error) {
-            console.error(`Error saving farmers for user ${user} to Firebase:`, error);
-            return false;
-        }
+        //     // Update Firebase with all farmers at once
+        //     await update(ref(database), updates);
+        //     return true;
+        // } catch (error) {
+        //     console.error(`Error saving farmers for user ${user} to Firebase:`, error);
+        //     return false;
+        // }
     },
     async getFarmers(user) {
         try {

@@ -1933,7 +1933,7 @@ const App = () => {
             setUsers(userNames);
 
             // Save users to Firebase Three
-            await firebaseThreeHelpers.saveUsers(userNames);
+            // await firebaseThreeHelpers.saveUsers(userNames);
 
             if (!selectedUser && userNames.length > 0) {
               setSelectedUser(userNames[0]);
@@ -1978,7 +1978,7 @@ const App = () => {
                 }
 
                 // Save updated farmers to Firebase Three
-                await firebaseThreeHelpers.saveFarmers(userName, updatedFarmers);
+                // await firebaseThreeHelpers.saveFarmers(userName, updatedFarmers);
 
                 // Update state if this is the selected user
                 if (userName === selectedUser || (!selectedUser && userName === userNames[0])) {
@@ -2024,7 +2024,7 @@ const App = () => {
             setFarmers(farmersArray);
 
             // Save to Firebase Three
-            await firebaseThreeHelpers.saveFarmers(selectedUser, farmersArray);
+            // await firebaseThreeHelpers.saveFarmers(selectedUser, farmersArray);
           } else {
             setFarmers([]);
           }
